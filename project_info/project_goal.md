@@ -11,7 +11,7 @@
 
 **State Space ($S_t$)**
 The continuous state vector at timestep t:
-$S_t = [\lambda_t, \mu_t, N_t, \delta_lambda_t]$
+$S_t = [\lambda_t, \mu_t, N_t, \delta_{\lambda_t}]$
 Where:
 * $\lambda_t$: Request arrival rate (RPS)
 * $\mu_t$: Average hardware utilization
@@ -39,10 +39,10 @@ Algorithm: Proximal Policy Optimization (PPO)
 
 **Objective Function**
 PPO uses a clipped surrogate objective to ensure stable policy updates.
-$L_{CLIP}(\theta) = E_t [ min( r_t(\theta) * A_hat_t, clip(r_t(\theta), 1 - eps, 1 + eps) * A_hat_t ) ]$
+$L_{CLIP}(\theta) = E_t [ min( r_t(\theta) * A_{hat_t}, clip(r_t(\theta), 1 - eps, 1 + eps) * A_{hat_t} ) ]$
 Where:
 * $r_t(\theta)$: Probability ratio of new vs old policy
-* $A_hat_t$: Advantage estimate
+* $A_{hat_t}$: Advantage estimate
 * $eps$: Clipping parameter (e.g., 0.2)
 
 **Network Architecture**
