@@ -1,3 +1,22 @@
+Metadata-Version: 2.4
+Name: rl-inference-autoscaler
+Version: 0.1.0
+Summary: RL-based inference autoscaler simulator and Ray/Modal PPO training
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: gymnasium<1.3,>=1.2.2
+Requires-Dist: matplotlib>=3.10.9
+Requires-Dist: numpy>=2.4.6
+Requires-Dist: pandas<3,>=2.2
+Provides-Extra: train
+Requires-Dist: ray[rllib]>=2.54.0; extra == "train"
+Requires-Dist: torch>=2.0.0; extra == "train"
+Requires-Dist: mlflow>=2.0.0; extra == "train"
+Provides-Extra: modal
+Requires-Dist: modal>=0.73.0; extra == "modal"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+
 # RL Inference Autoscaler
 
 Reinforcement-learning autoscaler for ML inference workloads: a **Gymnasium** cluster simulator (Phase 1), **Ray RLlib PPO** training (Phase 2), and (planned) **Ray Serve** deployment (Phase 3).
@@ -30,12 +49,10 @@ uv sync
 uv run pytest tests/test_autoscaler_env.py -v
 uv run python main.py
 
-# Training (use --no-editable on macOS — editable .pth files are skipped as "hidden")
-uv sync --extra train --no-editable
-uv sync --extra train --extra modal --extra dev --no-editable   # full stack
-
+# Training infrastructure (config + tests; does not launch Modal)
+uv sync --extra train --extra modal --extra dev
 uv run pytest -v
-.venv/bin/python train.py --dry-run
+uv run python -m rl_inference_autoscaler.train_ray --dry-run
 ```
 
 ## Phase 1 — Environment
@@ -66,9 +83,7 @@ uv run --extra train python train.py --local --iterations 10
 uv run --extra train python train.py --mlflow-tracking-uri file:./mlruns
 ```
 
-If you see `ModuleNotFoundError: No module named 'rl_inference_autoscaler'`, run `uv sync --extra train --no-editable` (macOS skips hidden `__editable__*.pth` files) or use `train.py` / `main.py` from the repo root (they add `src/` to the path).
-
-If you see `ModuleNotFoundError: No module named 'ray'` in `(raylet)` logs, Ray packaged the project without train deps — use `--extra train` or `.venv/bin/python train.py` after `uv sync --extra train --no-editable`.
+If you see `ModuleNotFoundError: No module named 'ray'` in `(raylet)` logs, Ray packaged the project without train deps — use `--extra train` or `.venv/bin/python train.py` after `uv sync --extra train`.
 
 Checkpoints: `checkpoints/final/`
 

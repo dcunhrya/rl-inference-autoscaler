@@ -1,0 +1,2 @@
+[console_scripts]
+train-ray = rl_inference_autoscaler.train_ray:main
