@@ -615,8 +615,8 @@ def main() -> None:
         _plot_faceted_scaling(benchmark, traj_eps)
 
     # B2 fixed replica sweep
-    from rl_inference_autoscaler.autoscaler_env import AutoscalerEnv
-    from rl_inference_autoscaler.baselines import evaluate_policy, fixed_replica_policy
+    from rl_inference_autoscaler.env import AutoscalerEnv
+    from rl_inference_autoscaler.policies.baselines import evaluate_policy, fixed_replica_policy
 
     sweep: dict[str, dict] = {}
     for n in (2, 4, 8, 12):

@@ -18,8 +18,8 @@ if str(_REPO / "src") not in sys.path:
 
 import numpy as np
 
-from rl_inference_autoscaler.autoscaler_env import AutoscalerEnv
-from rl_inference_autoscaler.baselines import (
+from rl_inference_autoscaler.env import AutoscalerEnv
+from rl_inference_autoscaler.policies.baselines import (
     evaluate_policy,
     fixed_replica_policy,
     greedy_policy,
@@ -335,8 +335,8 @@ def _action_histogram(env: AutoscalerEnv, seed: int, choose_action) -> dict[str,
 
 def run_b4_action_distribution(*, seed: int = 42) -> dict:
     """B4: action histogram {0,1,2} per policy on one rollout."""
-    from rl_inference_autoscaler.baselines import do_nothing_policy
-    from rl_inference_autoscaler.evaluation import (
+    from rl_inference_autoscaler.policies.baselines import do_nothing_policy
+    from rl_inference_autoscaler.evaluation.benchmark import (
         _checkpoint_version,
         _load_new_stack_action_fn,
         _load_old_stack_action_fn,

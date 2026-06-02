@@ -6,14 +6,26 @@ Reinforcement-learning autoscaler for ML inference workloads: a **Gymnasium** cl
 
 ```text
 src/rl_inference_autoscaler/
-  autoscaler_env.py   # Phase 1 MDP simulator
-  traffic.py          # Synthetic + CSV request-rate data
-  baselines.py        # Heuristic policy for comparison
-  train_config.py     # Shared PPO / DQN RLlib settings
-  train_common.py     # Shared Ray init, MLflow, metrics
-  train_ray.py        # PPO training (local or Modal worker)
-  train_dqn_ray.py    # DQN training (local or Modal worker)
-  modal_train.py      # Modal App — keep separate from train_ray
+  env/                # MDP simulator and reward presets
+    autoscaler.py
+    reward.py
+  data/               # Traffic traces and path helpers (→ repo data/)
+    traffic.py
+    paths.py
+  policies/           # Greedy, fixed-replica, target-utilization baselines
+    baselines.py
+  training/           # Ray RLlib PPO/DQN config and entrypoints
+    config.py
+    runtime.py
+    ppo.py
+    dqn.py
+  evaluation/         # Benchmarks, checkpoint rollout, MLflow
+    benchmark.py
+  cloud/              # Modal app (optional)
+    modal_app.py
+  train_ray.py        # thin shim → training.ppo
+  modal_train.py      # thin shim → cloud.modal_app
+data/                 # bundled traffic_trace.csv (repo root)
 data/
   traffic_trace.csv   # Optional reproducible RPS trace
 train.py              # Thin CLI for local PPO training

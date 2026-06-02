@@ -1,7 +1,7 @@
 import numpy as np
 
-from rl_inference_autoscaler.autoscaler_env import AutoscalerEnv
-from rl_inference_autoscaler.baselines import (
+from rl_inference_autoscaler.env import AutoscalerEnv
+from rl_inference_autoscaler.policies.baselines import (
     do_nothing_policy,
     evaluate_policy,
     greedy_policy,

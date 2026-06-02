@@ -2,7 +2,7 @@
 
 Phase 1 delivers a **Gymnasium** simulator for a Kubernetes-style inference autoscaler. The agent observes cluster metrics, chooses discrete scale actions, and receives a reward that trades off **replica cost** vs **latency / overload**.
 
-**Status: complete** — implementation lives in `src/rl_inference_autoscaler/autoscaler_env.py` with traffic generation in `traffic.py`.
+**Status: complete** — implementation lives in `src/rl_inference_autoscaler/env/` (`autoscaler.py`, `traffic.py`, `reward.py`).
 
 ## 1. MDP Summary
 
@@ -90,8 +90,8 @@ uv run python main.py   # one-episode baseline smoke run
 
 The canonical code is in the repository (not duplicated inline here):
 
-- `src/rl_inference_autoscaler/autoscaler_env.py` — `AutoscalerEnv`
-- `src/rl_inference_autoscaler/traffic.py` — traffic sources
-- `src/rl_inference_autoscaler/baselines.py` — target-utilization heuristic for comparison
+- `src/rl_inference_autoscaler/env/autoscaler.py` — `AutoscalerEnv`
+- `src/rl_inference_autoscaler/data/traffic.py` — traffic sources (CSV at repo `data/`)
+- `src/rl_inference_autoscaler/policies/baselines.py` — heuristics for comparison
 
 Next: **[Phase 2 — Distributed Training](phase2.md)**.

@@ -10,7 +10,7 @@ _REPO = Path(__file__).resolve().parents[1]
 if str(_REPO / "src") not in sys.path:
     sys.path.insert(0, str(_REPO / "src"))
 
-from rl_inference_autoscaler.traffic import write_traffic_csv
+from rl_inference_autoscaler.data import write_traffic_csv
 
 
 def main() -> None:

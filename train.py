@@ -9,7 +9,7 @@ _src = Path(__file__).resolve().parent / "src"
 if _src.is_dir() and str(_src) not in sys.path:
     sys.path.insert(0, str(_src))
 
-from rl_inference_autoscaler.train_ray import main
+from rl_inference_autoscaler.training.ppo import main
 
 if __name__ == "__main__":
     main()

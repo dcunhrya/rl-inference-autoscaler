@@ -217,7 +217,7 @@ def main() -> None:
         )
     )
 
-    from rl_inference_autoscaler.train_config import validate_dqn_config, validate_ppo_config
+    from rl_inference_autoscaler.training.config import validate_dqn_config, validate_ppo_config
 
     (_REPO / "results" / "experiments" / "a5_ppo_new_stack.json").write_text(
         json.dumps(

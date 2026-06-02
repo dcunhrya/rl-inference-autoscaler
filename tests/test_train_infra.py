@@ -3,7 +3,7 @@ import importlib
 import pytest
 
 from rl_inference_autoscaler import register_env
-from rl_inference_autoscaler.train_config import (
+from rl_inference_autoscaler.training.config import (
     DQNSettings,
     TrainingSettings,
     validate_dqn_config,
@@ -23,6 +23,7 @@ def test_validate_ppo_config_dry():
     pytest.importorskip("ray")
     meta = validate_ppo_config(TrainingSettings(num_env_runners=1))
     assert meta["algorithm"] == "PPO"
+    assert meta["api_stack"] == "new"
     assert meta["env_class"] == "AutoscalerEnv"
 
 
@@ -35,7 +36,7 @@ def test_validate_dqn_config_dry():
 
 def test_train_ray_dry_run():
     pytest.importorskip("ray")
-    from rl_inference_autoscaler.train_ray import run_training
+    from rl_inference_autoscaler.training.ppo import run_training
 
     summary = run_training(TrainingSettings(num_iterations=1), dry_run=True)
     assert summary["dry_run"] is True
@@ -45,7 +46,7 @@ def test_train_ray_dry_run():
 
 def test_train_dqn_dry_run():
     pytest.importorskip("ray")
-    from rl_inference_autoscaler.train_dqn_ray import run_dqn_training
+    from rl_inference_autoscaler.training.dqn import run_dqn_training
 
     summary = run_dqn_training(DQNSettings(num_iterations=1), dry_run=True)
     assert summary["dry_run"] is True

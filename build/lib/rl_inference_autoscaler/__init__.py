@@ -1,8 +1,8 @@
 """RL inference autoscaler: Gymnasium simulator and Ray/Modal training."""
 
-from rl_inference_autoscaler.autoscaler_env import AutoscalerEnv
+from rl_inference_autoscaler.env import AutoscalerEnv
 
-__all__ = ["AutoscalerEnv"]
+__all__ = ["AutoscalerEnv", "register_env"]
 
 
 def register_env() -> None:
@@ -18,5 +18,5 @@ def register_env() -> None:
         pass
     gym.register(
         id="Autoscaler-v0",
-        entry_point="rl_inference_autoscaler.autoscaler_env:AutoscalerEnv",
+        entry_point="rl_inference_autoscaler.env.autoscaler:AutoscalerEnv",
     )

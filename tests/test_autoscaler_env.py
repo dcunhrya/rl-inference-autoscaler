@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from rl_inference_autoscaler.autoscaler_env import AutoscalerEnv
-from rl_inference_autoscaler.baselines import evaluate_baseline, target_utilization_policy
-from rl_inference_autoscaler.traffic import TrafficGenerator, default_traffic_csv
+from rl_inference_autoscaler.env import AutoscalerEnv
+from rl_inference_autoscaler.data import TrafficGenerator, default_traffic_csv
+from rl_inference_autoscaler.policies.baselines import evaluate_baseline, target_utilization_policy
 
 
 def test_reset_step_shapes():

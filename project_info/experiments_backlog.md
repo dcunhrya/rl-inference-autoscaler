@@ -54,7 +54,7 @@ Living checklist for the **RL inference autoscaler** project.
 | A2 | [x] | DQN 100 iter |
 | A3 | [x] | `checkpoints/ppo_lr1e4` (40 iter) |
 | A4 | [x] | `checkpoints/dqn_lr1e3` (40 iter) |
-| A5 | [x] | Documented: PPO old stack, DQN new — `a5_ppo_new_stack.json` |
+| A5 | [x] | PPO migrated to new RLlib API stack (same path as DQN) |
 | A6 | [x] | Deferred (SAC/A2C) — `a6_alternatives.json` |
 | A7 | [x] | Curriculum runs `checkpoints/ppo_curriculum_{50,100,200}` |
 | A8 | [~] | Modal dry-run attempted; image build failed locally |
