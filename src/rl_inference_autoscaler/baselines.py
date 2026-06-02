@@ -101,13 +101,16 @@ def evaluate_policy(
                 "active_replicas": [],
                 "ideal_replicas": [],
                 "actions": [],
+                "cost_penalty": [],
+                "latency_penalty": [],
             }
 
         while not truncated:
             action = policy(obs, env)
             obs, reward, _term, truncated, info = env.step(action)
             total += reward
-            step_cost, step_lat = _step_penalties(env, info)
+            step_cost = float(info.get("cost_penalty", _step_penalties(env, info)[0]))
+            step_lat = float(info.get("latency_penalty", _step_penalties(env, info)[1]))
             ep_cost += step_cost
             ep_latency += step_lat
             if record and trajectory is not None:
@@ -117,6 +120,8 @@ def evaluate_policy(
                     ideal_replica_count(float(obs[0]), env)
                 )
                 trajectory["actions"].append(int(action))
+                trajectory["cost_penalty"].append(step_cost)
+                trajectory["latency_penalty"].append(step_lat)
 
         returns.append(total)
         costs.append(ep_cost)

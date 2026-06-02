@@ -1,0 +1,10 @@
+{
+  "experiment": "R6",
+  "config": {
+    "traffic_mode": "auto",
+    "util_band_penalty_zeta": 0.5,
+    "util_band_low": 0.6,
+    "util_band_high": 0.8
+  },
+  "episode_return_mean": -17579.022496528985
+}

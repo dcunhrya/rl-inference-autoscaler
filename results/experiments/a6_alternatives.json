@@ -1,0 +1,5 @@
+{
+  "experiment": "A6",
+  "status": "deferred",
+  "note": "SAC/A2C/Rainbow omitted; PPO/DQN are primary algorithms"
+}

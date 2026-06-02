@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
@@ -41,84 +42,139 @@ def resolve_checkpoint_path(
     primary: str | Path,
     *fallbacks: str | Path,
 ) -> Path | None:
-    """Return the first existing checkpoint path, or None."""
+    """Return the first existing checkpoint path (absolute), or None."""
     for candidate in (primary, *fallbacks):
-        path = Path(candidate)
+        path = Path(candidate).resolve()
         if path.exists():
             return path
     return None
 
 
-def evaluate_rllib_checkpoint(
-    checkpoint_path: str | Path,
-    env: AutoscalerEnv | None = None,
-    *,
-    episodes: int = 20,
-    seed: int = 0,
-    record_trajectory_episode: int | None = None,
-) -> dict[str, Any]:
-    """Roll out a saved Ray RLlib policy (PPO or DQN)."""
+def _checkpoint_version(path: Path) -> tuple[float, dict[str, Any]]:
+    meta_path = path / "rllib_checkpoint.json"
+    if not meta_path.is_file():
+        return 1.0, {}
+    meta = json.loads(meta_path.read_text())
+    version = float(str(meta.get("checkpoint_version", "1.0")).split(".")[0])
+    return version, meta
+
+
+def _rl_module_checkpoint_path(checkpoint_path: Path) -> Path:
+    return (
+        checkpoint_path
+        / "learner_group"
+        / "learner"
+        / "rl_module"
+        / "default_policy"
+    )
+
+
+def _action_from_rl_module_output(output: dict[str, Any]) -> int:
+    import torch
+
+    action = output["actions"]
+    if isinstance(action, torch.Tensor):
+        if action.ndim == 0:
+            return int(action.item())
+        return int(action[0].item())
+    if isinstance(action, (list, tuple, np.ndarray)):
+        return int(action[0])
+    return int(action)
+
+
+def _load_new_stack_action_fn(checkpoint_path: Path) -> Callable[[np.ndarray], int]:
+    """Load a new-API-stack RLModule for local inference (no Ray workers)."""
+    import torch
+    from ray.rllib.core.rl_module.rl_module import RLModule
+
+    module_path = _rl_module_checkpoint_path(checkpoint_path)
+    if not module_path.is_dir():
+        raise FileNotFoundError(f"RLModule checkpoint not found: {module_path}")
+
+    module = RLModule.from_checkpoint(str(module_path))
+
+    def compute_action(obs: np.ndarray) -> int:
+        batch = {"obs": torch.tensor(np.asarray([obs], dtype=np.float32))}
+        with torch.no_grad():
+            output = module.forward_inference(batch)
+        return _action_from_rl_module_output(output)
+
+    return compute_action
+
+
+def _load_old_stack_action_fn(checkpoint_path: Path) -> Callable[[np.ndarray], int]:
+    """Load an old-API-stack Algorithm checkpoint via Ray."""
     import ray
     from ray.rllib.algorithms.algorithm import Algorithm
 
-    path = Path(checkpoint_path)
-    if not path.exists():
-        raise FileNotFoundError(f"checkpoint not found: {path}")
+    from rl_inference_autoscaler import register_env
 
+    register_env()
     init_ray_local()
-    algo = Algorithm.from_checkpoint(str(path))
-    env = env or AutoscalerEnv()
+    algo = Algorithm.from_checkpoint(str(checkpoint_path))
+
+    def compute_action(obs: np.ndarray) -> int:
+        action = algo.compute_single_action(
+            obs,
+            explore=False,
+            prev_action=None,
+            prev_reward=None,
+        )
+        if isinstance(action, tuple):
+            action = action[0]
+        return int(action)
+
+    compute_action._algo = algo  # type: ignore[attr-defined]
+    compute_action._uses_ray = True  # type: ignore[attr-defined]
+    return compute_action
+
+
+def _rollout_with_action_fn(
+    action_fn: Callable[[np.ndarray], int],
+    env: AutoscalerEnv,
+    *,
+    episodes: int,
+    seed: int,
+    record_trajectory_episode: int | None,
+) -> dict[str, Any]:
     returns: list[float] = []
     costs: list[float] = []
     latencies: list[float] = []
     trajectory: dict[str, list] | None = None
 
-    try:
-        for ep in range(episodes):
-            obs, _ = env.reset(seed=seed + ep)
-            total = 0.0
-            ep_cost = 0.0
-            ep_latency = 0.0
-            truncated = False
-            record = record_trajectory_episode is not None and ep == record_trajectory_episode
-            if record:
-                trajectory = {
-                    "rps": [],
-                    "active_replicas": [],
-                    "ideal_replicas": [],
-                    "actions": [],
-                }
+    for ep in range(episodes):
+        obs, _ = env.reset(seed=seed + ep)
+        total = 0.0
+        ep_cost = 0.0
+        ep_latency = 0.0
+        truncated = False
+        record = record_trajectory_episode is not None and ep == record_trajectory_episode
+        if record:
+            trajectory = {
+                "rps": [],
+                "active_replicas": [],
+                "ideal_replicas": [],
+                "actions": [],
+            }
 
-            while not truncated:
-                action = algo.compute_single_action(
-                    obs,
-                    explore=False,
-                    prev_action=None,
-                    prev_reward=None,
+        while not truncated:
+            action = action_fn(obs)
+            obs, reward, _term, truncated, info = env.step(action)
+            total += reward
+            step_cost, step_lat = _step_penalties(env, info)
+            ep_cost += step_cost
+            ep_latency += step_lat
+            if record and trajectory is not None:
+                trajectory["rps"].append(float(obs[0]))
+                trajectory["active_replicas"].append(float(info["active_replicas"]))
+                trajectory["ideal_replicas"].append(
+                    ideal_replica_count(float(obs[0]), env)
                 )
-                if isinstance(action, tuple):
-                    action = action[0]
-                action = int(action)
-                obs, reward, _term, truncated, info = env.step(action)
-                total += reward
-                step_cost, step_lat = _step_penalties(env, info)
-                ep_cost += step_cost
-                ep_latency += step_lat
-                if record and trajectory is not None:
-                    trajectory["rps"].append(float(obs[0]))
-                    trajectory["active_replicas"].append(float(info["active_replicas"]))
-                    trajectory["ideal_replicas"].append(
-                        ideal_replica_count(float(obs[0]), env)
-                    )
-                    trajectory["actions"].append(action)
+                trajectory["actions"].append(action)
 
-            returns.append(total)
-            costs.append(ep_cost)
-            latencies.append(ep_latency)
-    finally:
-        algo.stop()
-        if ray.is_initialized():
-            ray.shutdown()
+        returns.append(total)
+        costs.append(ep_cost)
+        latencies.append(ep_latency)
 
     result: dict[str, Any] = {
         "episode_returns": returns,
@@ -131,6 +187,49 @@ def evaluate_rllib_checkpoint(
     if trajectory is not None:
         result["trajectory"] = trajectory
     return result
+
+
+def evaluate_rllib_checkpoint(
+    checkpoint_path: str | Path,
+    env: AutoscalerEnv | None = None,
+    *,
+    episodes: int = 20,
+    seed: int = 0,
+    record_trajectory_episode: int | None = None,
+) -> dict[str, Any]:
+    """Roll out a saved Ray RLlib policy (PPO old stack or DQN new stack)."""
+    path = Path(checkpoint_path).resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"checkpoint not found: {path}")
+
+    env = env or AutoscalerEnv()
+    version, _meta = _checkpoint_version(path)
+    uses_ray = False
+    algo = None
+
+    try:
+        if version >= 2.0:
+            action_fn = _load_new_stack_action_fn(path)
+        else:
+            action_fn = _load_old_stack_action_fn(path)
+            uses_ray = True
+            algo = getattr(action_fn, "_algo", None)
+
+        return _rollout_with_action_fn(
+            action_fn,
+            env,
+            episodes=episodes,
+            seed=seed,
+            record_trajectory_episode=record_trajectory_episode,
+        )
+    finally:
+        if algo is not None:
+            algo.stop()
+        if uses_ray:
+            import ray
+
+            if ray.is_initialized():
+                ray.shutdown()
 
 
 def evaluate_ppo_checkpoint(

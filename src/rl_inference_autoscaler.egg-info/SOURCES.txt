@@ -5,6 +5,7 @@ src/rl_inference_autoscaler/autoscaler_env.py
 src/rl_inference_autoscaler/baselines.py
 src/rl_inference_autoscaler/evaluation.py
 src/rl_inference_autoscaler/modal_train.py
+src/rl_inference_autoscaler/reward_config.py
 src/rl_inference_autoscaler/traffic.py
 src/rl_inference_autoscaler/train_common.py
 src/rl_inference_autoscaler/train_config.py

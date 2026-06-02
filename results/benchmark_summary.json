@@ -1,5 +1,5 @@
 {
-  "episodes": 20,
+  "episodes": 50,
   "seed": 42,
   "env_config": {
     "traffic_mode": "auto"
@@ -7,43 +7,50 @@
   "fixed_replicas": 4,
   "policies": {
     "do_nothing": {
-      "episode_return_mean": -2701.8999999999915,
-      "episode_return_std": 4.547473508864641e-13,
-      "mean_cost_penalty": 20.00000000000001,
-      "mean_latency_penalty": 2681.9000000000005,
+      "episode_return_mean": -82099.01877575363,
+      "episode_return_std": 0.0,
+      "mean_cost_penalty": 20.000000000000014,
+      "mean_latency_penalty": 82079.01877575362,
       "error": null
     },
     "fixed_replica": {
-      "episode_return_mean": -80.00000000000004,
-      "episode_return_std": 1.4210854715202004e-14,
-      "mean_cost_penalty": 80.00000000000004,
-      "mean_latency_penalty": 0.0,
+      "episode_return_mean": -46820.57097631653,
+      "episode_return_std": 7.275957614183426e-12,
+      "mean_cost_penalty": 80.00000000000006,
+      "mean_latency_penalty": 46740.57097631642,
+      "error": null
+    },
+    "target_utilization": {
+      "episode_return_mean": -9519.00750018767,
+      "episode_return_std": 1.8189894035458565e-12,
+      "mean_cost_penalty": 170.90000000000032,
+      "mean_latency_penalty": 9348.107500187687,
       "error": null
     },
     "greedy": {
-      "episode_return_mean": -659.7000000000043,
+      "episode_return_mean": -17566.18010773991,
       "episode_return_std": 0.0,
-      "mean_cost_penalty": 21.700000000000042,
-      "mean_latency_penalty": 637.9999999999999,
+      "mean_cost_penalty": 98.30000000000011,
+      "mean_latency_penalty": 17467.88010773989,
       "error": null
     },
     "ppo": {
-      "episode_return_mean": -30.100000000000183,
-      "episode_return_std": 3.552713678800501e-15,
-      "mean_cost_penalty": 30.100000000000183,
-      "mean_latency_penalty": 0.0,
+      "episode_return_mean": -692.2422211023409,
+      "episode_return_std": 1.1368683772161603e-13,
+      "mean_cost_penalty": 299.3999999999997,
+      "mean_latency_penalty": 392.84222110234134,
       "error": null
     },
     "dqn": {
-      "episode_return_mean": -359.6999999999962,
-      "episode_return_std": 0.0,
-      "mean_cost_penalty": 80.20000000000006,
-      "mean_latency_penalty": 279.5,
+      "episode_return_mean": -901.893793555196,
+      "episode_return_std": 1.1368683772161603e-13,
+      "mean_cost_penalty": 263.2000000000003,
+      "mean_latency_penalty": 638.6937935551973,
       "error": null
     }
   },
   "mlflow_run_ids": {
-    "ppo": "cb6de5d8be9c48dc8d1a1459317fb3ce",
-    "dqn": "04df9138b3a24dcbba798294641559d0"
+    "ppo": "79dce3f01cb04b22812352fb1d1ea013",
+    "dqn": "7b0ea6e8ca784c02b46510b8eb3c9666"
   }
 }

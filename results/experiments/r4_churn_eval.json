@@ -1,0 +1,18 @@
+{
+  "experiment": "R4_eval",
+  "rows": [
+    {
+      "config": {
+        "traffic_mode": "auto"
+      },
+      "episode_return_mean": -17566.180107739907
+    },
+    {
+      "config": {
+        "traffic_mode": "auto",
+        "churn_penalty_delta": 0.05
+      },
+      "episode_return_mean": -17571.530107739927
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "experiment": "R1",
+  "episodes": 10,
+  "seed": 42,
+  "rows": [
+    {
+      "config": {
+        "cost_alpha": 0.1,
+        "latency_beta": 1.0,
+        "queue_penalty_gamma": 0.05
+      },
+      "episode_return_mean": -17566.180107739907,
+      "mean_cost_penalty": 98.3000000000001,
+      "mean_latency_penalty": 17467.88010773989,
+      "mean_abs_gap": 1.695,
+      "max_abs_gap": 10.0,
+      "rmse": 2.8818396901979124
+    },
+    {
+      "config": {
+        "cost_alpha": 0.2,
+        "latency_beta": 0.5,
+        "queue_penalty_gamma": 0.05
+      },
+      "episode_return_mean": -8930.54005386993,
+      "mean_cost_penalty": 196.6000000000002,
+      "mean_latency_penalty": 8733.940053869945,
+      "mean_abs_gap": 1.695,
+      "max_abs_gap": 10.0,
+      "rmse": 2.8818396901979124
+    },
+    {
+      "config": {
+        "cost_alpha": 0.05,
+        "latency_beta": 2.0,
+        "queue_penalty_gamma": 0.1
+      },
+      "episode_return_mean": -38038.8959440262,
+      "mean_cost_penalty": 49.15000000000005,
+      "mean_latency_penalty": 37989.74594402627,
+      "mean_abs_gap": 1.695,
+      "max_abs_gap": 10.0,
+      "rmse": 2.8818396901979124
+    },
+    {
+      "config": {
+        "cost_alpha": 0.15,
+        "latency_beta": 1.5,
+        "queue_penalty_gamma": 0.05
+      },
+      "episode_return_mean": -26349.270161609806,
+      "mean_cost_penalty": 147.45000000000053,
+      "mean_latency_penalty": 26201.82016160984,
+      "mean_abs_gap": 1.695,
+      "max_abs_gap": 10.0,
+      "rmse": 2.8818396901979124
+    },
+    {
+      "config": {
+        "cost_alpha": 0.1,
+        "latency_beta": 0.5,
+        "queue_penalty_gamma": 0.1
+      },
+      "episode_return_mean": -9595.736486006597,
+      "mean_cost_penalty": 98.3000000000001,
+      "mean_latency_penalty": 9497.436486006567,
+      "mean_abs_gap": 1.695,
+      "max_abs_gap": 10.0,
+      "rmse": 2.8818396901979124
+    }
+  ]
+}

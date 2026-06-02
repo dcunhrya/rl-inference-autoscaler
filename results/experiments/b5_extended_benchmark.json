@@ -1,0 +1,49 @@
+{
+  "experiment": "B5",
+  "episodes": 50,
+  "seed": 42,
+  "policies": {
+    "do_nothing": {
+      "episode_return_mean": -82099.01877575363,
+      "episode_return_std": 0.0,
+      "mean_cost_penalty": 20.000000000000014,
+      "mean_latency_penalty": 82079.01877575362,
+      "error": null
+    },
+    "fixed_replica": {
+      "episode_return_mean": -46820.57097631653,
+      "episode_return_std": 7.275957614183426e-12,
+      "mean_cost_penalty": 80.00000000000006,
+      "mean_latency_penalty": 46740.57097631642,
+      "error": null
+    },
+    "target_utilization": {
+      "episode_return_mean": -9519.00750018767,
+      "episode_return_std": 1.8189894035458565e-12,
+      "mean_cost_penalty": 170.90000000000032,
+      "mean_latency_penalty": 9348.107500187687,
+      "error": null
+    },
+    "greedy": {
+      "episode_return_mean": -17566.18010773991,
+      "episode_return_std": 0.0,
+      "mean_cost_penalty": 98.30000000000011,
+      "mean_latency_penalty": 17467.88010773989,
+      "error": null
+    },
+    "ppo": {
+      "episode_return_mean": -692.2422211023409,
+      "episode_return_std": 1.1368683772161603e-13,
+      "mean_cost_penalty": 299.3999999999997,
+      "mean_latency_penalty": 392.84222110234134,
+      "error": null
+    },
+    "dqn": {
+      "episode_return_mean": -901.893793555196,
+      "episode_return_std": 1.1368683772161603e-13,
+      "mean_cost_penalty": 263.2000000000003,
+      "mean_latency_penalty": 638.6937935551973,
+      "error": null
+    }
+  }
+}

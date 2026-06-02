@@ -1,0 +1,21 @@
+{
+  "experiment": "B3",
+  "seed": 42,
+  "policies": {
+    "greedy": {
+      "mean_abs_gap": 1.695,
+      "max_abs_gap": 10.0,
+      "rmse": 2.8818396901979124
+    },
+    "ppo": {
+      "mean_abs_gap": 9.6,
+      "max_abs_gap": 19.0,
+      "rmse": 10.6686456497533
+    },
+    "dqn": {
+      "mean_abs_gap": 7.85,
+      "max_abs_gap": 15.0,
+      "rmse": 8.859458222713169
+    }
+  }
+}

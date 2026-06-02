@@ -1,0 +1,5 @@
+{
+  "experiment": "A8_A9",
+  "status": "failed: Command '['uv', 'run', '--extra', 'train', '--extra', 'modal', 'modal', 'run', 'src/rl_inference_autoscaler/modal_train.py']' returned non-zero exit status 1.",
+  "note": "Modal image build may fail on dependency pins; use local checkpoints"
+}

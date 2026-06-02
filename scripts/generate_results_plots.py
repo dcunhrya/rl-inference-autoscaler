@@ -9,6 +9,7 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -29,6 +30,7 @@ POLICY_LABELS = {
     "ppo": "PPO (trained)",
     "dqn": "DQN (trained)",
     "greedy": "Greedy",
+    "target_utilization": "Target util (HPA)",
     "fixed_replica": "Fixed replica",
     "do_nothing": "Do nothing",
 }
@@ -36,11 +38,25 @@ POLICY_COLORS = {
     "ppo": "#2563eb",
     "dqn": "#9333ea",
     "greedy": "#16a34a",
+    "target_utilization": "#0891b2",
     "fixed_replica": "#ca8a04",
     "do_nothing": "#dc2626",
 }
-PARETO_ORDER = ["ppo", "dqn", "greedy", "fixed_replica", "do_nothing"]
+PARETO_ORDER = [
+    "ppo",
+    "dqn",
+    "greedy",
+    "target_utilization",
+    "fixed_replica",
+    "do_nothing",
+]
 SCALING_COMPARE_POLICIES = ["ppo", "dqn", "greedy"]
+SCALING_LINE_STYLES = {
+    "ground_truth": {"color": "#111827", "linestyle": "-", "linewidth": 2.5, "alpha": 1.0},
+    "ppo": {"color": "#2563eb", "linestyle": "--", "linewidth": 2.0, "alpha": 0.95},
+    "dqn": {"color": "#9333ea", "linestyle": "-.", "linewidth": 2.0, "alpha": 0.95},
+    "greedy": {"color": "#16a34a", "linestyle": ":", "linewidth": 2.4, "alpha": 0.95},
+}
 
 
 def _plot_policy_comparison(benchmark: dict) -> None:
@@ -216,7 +232,7 @@ def _plot_scaling_vs_ground_truth(
 
 
 def _plot_combined_scaling_vs_ground_truth(benchmark: dict) -> None:
-    """Side-by-side panels: one policy per column, ideal vs active only."""
+    """Overlay PPO, DQN, Greedy, and ground truth on one episode."""
     policies = benchmark["policies"]
     trajectories: dict[str, dict] = {}
     for key in SCALING_COMPARE_POLICIES:
@@ -224,97 +240,91 @@ def _plot_combined_scaling_vs_ground_truth(benchmark: dict) -> None:
         if data.get("trajectory"):
             trajectories[key] = data["trajectory"]
 
-    available = [k for k in SCALING_COMPARE_POLICIES if k in trajectories]
-    if not available:
+    if not trajectories:
         print("No trajectories for combined scaling plot; skipping.")
         return
 
-    ref_key = available[0]
+    ref_key = next(iter(trajectories))
     ideal = np.array(trajectories[ref_key]["ideal_replicas"])
     rps = np.array(trajectories[ref_key]["rps"])
     steps = np.arange(len(ideal))
     episode_seed = benchmark["seed"] + benchmark.get("trajectory_episode", 0)
 
-    n_cols = len(available)
-    fig = plt.figure(figsize=(4.2 * n_cols, 7.5))
-    gs = fig.add_gridspec(
+    fig, axes = plt.subplots(
         2,
-        n_cols,
-        height_ratios=[1, 2.4],
-        hspace=0.38,
-        wspace=0.22,
+        1,
+        figsize=(12, 8),
+        sharex=True,
+        gridspec_kw={"height_ratios": [2.2, 1], "hspace": 0.08},
+    )
+    ax_replicas, ax_rps = axes
+
+    gt_style = SCALING_LINE_STYLES["ground_truth"]
+    ax_replicas.step(
+        steps,
+        ideal,
+        where="post",
+        label="Ground truth (ideal replicas)",
+        zorder=5,
+        **gt_style,
     )
 
-    ax_traffic = fig.add_subplot(gs[0, :])
-    ax_traffic.plot(steps, rps, color="#7c3aed", linewidth=1.4)
-    ax_traffic.fill_between(steps, rps, alpha=0.12, color="#7c3aed", step=None)
-    ax_traffic.set_ylabel("RPS")
-    ax_traffic.set_title(f"Traffic (λ_t) — episode seed={episode_seed}")
-    ax_traffic.grid(True, alpha=0.25)
-    ax_traffic.set_xlim(0, len(steps) - 1)
-
-    y_max = float(np.max(ideal)) + 1.5
-    for traj in trajectories.values():
-        y_max = max(y_max, float(np.max(traj["active_replicas"])) + 1.5)
-
-    policy_axes: list = []
-
-    for col, key in enumerate(available):
-        ax = fig.add_subplot(gs[1, col], sharex=ax_traffic)
-        policy_axes.append(ax)
-        if col > 0:
-            plt.setp(ax.get_yticklabels(), visible=False)
-
-        active = np.array(trajectories[key]["active_replicas"])
-        n = min(len(active), len(ideal))
-        gap = np.abs(active[:n] - ideal[:n])
-        mae = float(np.mean(gap))
-
-        ax.step(
-            steps[:n],
-            ideal[:n],
+    for key in SCALING_COMPARE_POLICIES:
+        traj = trajectories.get(key)
+        if not traj:
+            continue
+        active = np.array(traj["active_replicas"])
+        style = SCALING_LINE_STYLES[key]
+        ax_replicas.step(
+            steps[: len(active)],
+            active,
             where="post",
-            color="#64748b",
-            linewidth=1.8,
-            linestyle="--",
-            label="Ground truth",
-            zorder=2,
+            label=POLICY_LABELS[key],
+            zorder=4 if key == "greedy" else 3,
+            **style,
         )
-        ax.step(
-            steps[:n],
-            active[:n],
-            where="post",
-            color=POLICY_COLORS[key],
-            linewidth=2.8,
-            label="Active",
-            zorder=3,
-        )
-        ax.fill_between(
-            steps[:n],
-            ideal[:n],
-            active[:n],
+
+    ax_replicas.set_ylabel("Replica count")
+    ax_replicas.set_title(
+        f"Scaling vs ground truth — PPO, DQN & Greedy (episode seed={episode_seed})"
+    )
+    ax_replicas.set_ylim(bottom=0.5)
+    ax_replicas.grid(True, alpha=0.25)
+    ax_replicas.legend(loc="upper left", ncol=2, fontsize=9, framealpha=0.92)
+
+    ax_err = ax_replicas.twinx()
+    for key in SCALING_COMPARE_POLICIES:
+        traj = trajectories.get(key)
+        if not traj:
+            continue
+        active = np.array(traj["active_replicas"])
+        err = np.abs(active - ideal[: len(active)])
+        ax_err.fill_between(
+            steps[: len(active)],
+            err,
             step="post",
-            alpha=0.22,
             color=POLICY_COLORS[key],
-            label="Gap",
+            alpha=0.08,
+            linewidth=0,
         )
+    ax_err.set_ylabel("|active − ideal|", fontsize=9, color="#64748b")
+    ax_err.tick_params(axis="y", labelsize=8, colors="#64748b")
+    ax_err.set_ylim(bottom=0)
 
-        ax.set_title(
-            f"{POLICY_LABELS[key]}\nmean |active − ideal| = {mae:.2f}",
-            fontsize=10,
-        )
-        ax.set_xlabel("Timestep")
-        ax.set_ylim(0.5, y_max)
-        ax.grid(True, alpha=0.25)
-        ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+    ax_rps.plot(steps, rps, color="#7c3aed", linewidth=1.3, alpha=0.9)
+    ax_rps.set_ylabel("RPS")
+    ax_rps.set_xlabel("Timestep")
+    ax_rps.set_title("Traffic (λ_t)")
+    ax_rps.grid(True, alpha=0.25)
 
-    policy_axes[0].set_ylabel("Replica count")
-    fig.suptitle(
-        "Scaling vs ground truth — one panel per policy (same episode)",
-        fontsize=12,
-        y=0.98,
+    fig.text(
+        0.01,
+        0.01,
+        "Same episode for all policies. Shaded bands (right axis): absolute replica gap vs ground truth.",
+        fontsize=8,
+        color="#555",
     )
-
+    fig.subplots_adjust(left=0.08, right=0.92, top=0.94, bottom=0.08, hspace=0.12)
     out = FIGURES_DIR / "scaling_vs_ground_truth_combined.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -397,21 +407,165 @@ def _plot_dqn_training_metrics(mlflow_data: dict) -> None:
     )
 
 
+def _plot_reward_components(benchmark: dict) -> None:
+    """P6: stacked cost vs latency over episode (greedy trajectory)."""
+    traj = benchmark["policies"].get("greedy", {}).get("trajectory")
+    if not traj or "cost_penalty" not in traj:
+        print("No component trajectory; skipping reward component plot.")
+        return
+    steps = np.arange(len(traj["cost_penalty"]))
+    cost = np.array(traj["cost_penalty"])
+    lat = np.array(traj["latency_penalty"])
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.stackplot(steps, cost, lat, labels=["Cost", "Latency"], colors=["#2563eb", "#dc2626"], alpha=0.75)
+    ax.set_xlabel("Timestep")
+    ax.set_ylabel("Per-step penalty")
+    ax.set_title("Greedy policy — reward components (episode 0)")
+    ax.legend(loc="upper right")
+    fig.tight_layout()
+    out = FIGURES_DIR / "reward_components_greedy.png"
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print(f"Wrote {out}")
+
+
+def _plot_training_overlay(mlflow_ppo: dict, mlflow_dqn: dict) -> None:
+    """P5: PPO + DQN episode_return_mean on one chart."""
+    ppo = (mlflow_ppo.get("metrics") or {}).get("episode_return_mean")
+    dqn = (mlflow_dqn.get("metrics") or {}).get("episode_return_mean")
+    if not ppo and not dqn:
+        print("No MLflow curves for overlay; skipping.")
+        return
+    fig, ax = plt.subplots(figsize=(9, 5))
+    if ppo:
+        ax.plot([s for s, _ in ppo], [v for _, v in ppo], label="PPO", color="#2563eb", marker="o", ms=3)
+    if dqn:
+        ax.plot([s for s, _ in dqn], [v for _, v in dqn], label="DQN", color="#9333ea", marker="o", ms=3)
+    ax.axhline(0, color="#999", linestyle="--", lw=0.8)
+    ax.set_xlabel("Training iteration")
+    ax.set_ylabel("episode_return_mean")
+    ax.set_title("PPO vs DQN training (MLflow)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    out = FIGURES_DIR / "training_curves_overlay.png"
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print(f"Wrote {out}")
+
+
+def _plot_b6_scatter(benchmark: dict) -> None:
+    """B6: episode return vs cost/latency sums."""
+    policies = benchmark["policies"]
+    costs, lats, rets, names = [], [], [], []
+    for key in PARETO_ORDER:
+        p = policies.get(key)
+        if not p or p.get("error"):
+            continue
+        costs.append(p["mean_cost_penalty"])
+        lats.append(p["mean_latency_penalty"])
+        rets.append(p["episode_return_mean"])
+        names.append(POLICY_LABELS[key])
+    if not names:
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    axes[0].scatter(costs, rets, c=range(len(names)), cmap="tab10", s=80)
+    axes[0].set_xlabel("Mean cost penalty")
+    axes[0].set_ylabel("Episode return")
+    axes[0].set_title("Return vs cost")
+    axes[1].scatter(lats, rets, c=range(len(names)), cmap="tab10", s=80)
+    axes[1].set_xlabel("Mean latency penalty")
+    axes[1].set_ylabel("Episode return")
+    axes[1].set_title("Return vs latency")
+    for i, n in enumerate(names):
+        axes[0].annotate(n, (costs[i], rets[i]), fontsize=7, xytext=(4, 4), textcoords="offset points")
+    fig.tight_layout()
+    out = FIGURES_DIR / "return_vs_penalties_scatter.png"
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print(f"Wrote {out}")
+
+
+def _plot_faceted_scaling(benchmark: dict, trajectory_episodes: list[int]) -> None:
+    """P4: faceted scaling plots per policy."""
+    n = len(SCALING_COMPARE_POLICIES)
+    fig, axes = plt.subplots(n, 1, figsize=(10, 3 * n), sharex=True)
+    if n == 1:
+        axes = [axes]
+    for ax, key in zip(axes, SCALING_COMPARE_POLICIES):
+        traj = benchmark["policies"].get(key, {}).get("trajectory")
+        if not traj:
+            ax.set_title(f"{POLICY_LABELS[key]} (no data)")
+            continue
+        steps = np.arange(len(traj["ideal_replicas"]))
+        ax.step(steps, traj["ideal_replicas"], where="post", color="#111827", label="Ground truth")
+        ax.step(
+            steps,
+            traj["active_replicas"],
+            where="post",
+            color=POLICY_COLORS[key],
+            linestyle="--",
+            label="Active",
+        )
+        ax.set_ylabel("Replicas")
+        ax.set_title(POLICY_LABELS[key])
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.25)
+    axes[-1].set_xlabel("Timestep")
+    fig.suptitle("Faceted scaling vs ground truth", y=1.01)
+    fig.tight_layout()
+    out = FIGURES_DIR / "scaling_vs_ground_truth_faceted.png"
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Wrote {out}")
+
+
+def _plot_fixed_replica_sweep(sweep: dict) -> None:
+    """B2: fixed replica Pareto points."""
+    fig, ax = plt.subplots(figsize=(7, 5))
+    for n, metrics in sorted(sweep.items(), key=lambda x: int(x[0])):
+        ax.scatter(
+            metrics["mean_cost_penalty"],
+            metrics["mean_latency_penalty"],
+            s=100,
+            label=f"fixed n={n}",
+        )
+    ax.set_xlabel("Cost penalty")
+    ax.set_ylabel("Latency penalty")
+    ax.set_title("Fixed replica sweep (B2)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    out = FIGURES_DIR / "fixed_replica_sweep.png"
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print(f"Wrote {out}")
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--episodes", type=int, default=50)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--faceted", action="store_true", help="P4 faceted scaling plot")
+    parser.add_argument("--trajectory-episodes", type=str, default="0,5,10", help="T6")
+    args = parser.parse_args()
+
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    traj_eps = [int(x) for x in args.trajectory_episodes.split(",") if x.strip()]
 
     print("Running benchmark rollouts...")
     benchmark = run_benchmark_suite(
         ppo_checkpoint_path=_REPO / "checkpoints" / "ppo" / "final",
         dqn_checkpoint_path=_REPO / "checkpoints" / "dqn" / "final",
-        episodes=20,
-        seed=42,
+        episodes=args.episodes,
+        seed=args.seed,
         fixed_replicas=4,
         mlflow_db=_REPO / "mlflow.db",
-        trajectory_episode=0,
+        trajectory_episode=traj_eps[0] if traj_eps else 0,
     )
     benchmark["fixed_replicas"] = 4
+    benchmark["trajectory_episodes"] = traj_eps
 
     summary = {
         "episodes": benchmark["episodes"],
@@ -454,6 +608,50 @@ def main() -> None:
     _plot_combined_scaling_vs_ground_truth(benchmark)
     _plot_ppo_training_metrics(benchmark["mlflow"]["ppo"])
     _plot_dqn_training_metrics(benchmark["mlflow"]["dqn"])
+    _plot_training_overlay(benchmark["mlflow"]["ppo"], benchmark["mlflow"]["dqn"])
+    _plot_reward_components(benchmark)
+    _plot_b6_scatter(benchmark)
+    if args.faceted:
+        _plot_faceted_scaling(benchmark, traj_eps)
+
+    # B2 fixed replica sweep
+    from rl_inference_autoscaler.autoscaler_env import AutoscalerEnv
+    from rl_inference_autoscaler.baselines import evaluate_policy, fixed_replica_policy
+
+    sweep: dict[str, dict] = {}
+    for n in (2, 4, 8, 12):
+        m = evaluate_policy(
+            fixed_replica_policy,
+            AutoscalerEnv(config={"traffic_mode": "auto", "initial_replicas": float(n)}),
+            episodes=min(args.episodes, 30),
+            seed=args.seed,
+        )
+        sweep[str(n)] = {
+            "episode_return_mean": m["episode_return_mean"],
+            "mean_cost_penalty": m["mean_cost_penalty"],
+            "mean_latency_penalty": m["mean_latency_penalty"],
+        }
+    (_REPO / "results" / "experiments" / "b2_fixed_replica_sweep.json").write_text(
+        json.dumps({"experiment": "B2", "sweep": sweep}, indent=2)
+    )
+    _plot_fixed_replica_sweep(sweep)
+
+    # T6 extra trajectories stored in benchmark meta
+    t6 = {"experiment": "T6", "episodes": []}
+    for ep in traj_eps[1:]:
+        b = run_benchmark_suite(
+            episodes=ep + 1,
+            seed=args.seed,
+            trajectory_episode=ep,
+            mlflow_db=_REPO / "mlflow.db",
+        )
+        for key in ("ppo", "dqn", "greedy"):
+            traj = b["policies"].get(key, {}).get("trajectory")
+            if traj:
+                t6["episodes"].append({"episode_index": ep, "policy": key, "steps": len(traj["rps"])})
+    (_REPO / "results" / "experiments" / "t6_plot_trajectories.json").write_text(
+        json.dumps(t6, indent=2)
+    )
 
 
 if __name__ == "__main__":

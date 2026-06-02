@@ -24,8 +24,8 @@ The environment does **not** require external APIs for training. Request rates c
 | Mode | Source | When to use |
 |------|--------|-------------|
 | **`auto`** (default) | Uses `data/traffic_trace.csv` if present; else **synthetic** | Training & CI |
-| **`synthetic`** | Random walk + Gaussian noise + 5% spikes | Default bursty traffic |
-| **`csv`** | `data/traffic_trace.csv` (columns: `step`, `rps`) | Reproducible eval or real traces |
+| **`synthetic`** | Drifting baseline + noise + multi-step bursts (8% per step) | Training when no CSV; bursty GPU-like load |
+| **`csv`** | `data/traffic_trace.csv` (200 steps, ~10–16 bursts) | Reproducible eval or real traces |
 
 To use **production metrics**, export time-series RPS to CSV and set:
 
@@ -33,7 +33,11 @@ To use **production metrics**, export time-series RPS to CSV and set:
 AutoscalerEnv(config={"traffic_mode": "csv", "traffic_csv_path": "/path/to/trace.csv"})
 ```
 
-The bundled `data/traffic_trace.csv` is a short illustrative trace (spike at step 15).
+The bundled `data/traffic_trace.csv` is a **200-step** GPU-style trace (drifting baseline, jitter, many multi-step bursts). Regenerate with:
+
+```bash
+python scripts/generate_traffic_trace.py
+```
 
 ## 3. Realism: Cold Start & Queue
 

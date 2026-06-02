@@ -112,6 +112,14 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Use num_env_runners=0 (single-process rollouts; best for Mac debugging)",
     )
+    parser.add_argument(
+        "--reward-mode",
+        choices=["balanced", "cost_sensitive", "latency_sensitive"],
+        default=None,
+        help="Apply reward preset (R8)",
+    )
+    parser.add_argument("--max-steps-per-episode", type=int, default=None)
+    parser.add_argument("--lr", type=float, default=None)
     return parser.parse_args()
 
 
@@ -119,13 +127,19 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = _parse_args()
     num_env_runners = 0 if args.local else args.num_env_runners
+    env_config: dict = {"traffic_mode": args.traffic_mode}
+    if args.reward_mode:
+        env_config["reward_mode"] = args.reward_mode
+    if args.max_steps_per_episode is not None:
+        env_config["max_steps_per_episode"] = args.max_steps_per_episode
     settings = DQNSettings(
         num_iterations=args.iterations,
         num_env_runners=num_env_runners,
         checkpoint_dir=args.checkpoint_dir,
         experiment_name=args.experiment_name,
         mlflow_tracking_uri=args.mlflow_tracking_uri,
-        env_config={"traffic_mode": args.traffic_mode},
+        env_config=env_config,
+        lr=args.lr if args.lr is not None else DQNSettings().lr,
     )
     summary = run_dqn_training(settings, dry_run=args.dry_run)
     print(json.dumps(summary, indent=2))

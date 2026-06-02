@@ -1,0 +1,81 @@
+{
+  "experiments": [
+    {
+      "name": "Default",
+      "run_ids": []
+    },
+    {
+      "name": "autoscaler-dqn",
+      "run_ids": [
+        "de4ddcbeef4c4bd2b74a37f6524c0192",
+        "7b0ea6e8ca784c02b46510b8eb3c9666",
+        "04df9138b3a24dcbba798294641559d0",
+        "dead7085a20b42c280887c634c17b2cd",
+        "2726ac3d250e4bbcb727968762eb85ff"
+      ]
+    },
+    {
+      "name": "autoscaler-dqn-csv",
+      "run_ids": [
+        "75a1d07dc90743af9bf29984f544394e"
+      ]
+    },
+    {
+      "name": "autoscaler-dqn-lr1e3",
+      "run_ids": [
+        "40ee11f607af477bb7eb1e9022a50f80"
+      ]
+    },
+    {
+      "name": "autoscaler-ppo",
+      "run_ids": [
+        "111979031e714f75baa588d9519ee7f5",
+        "79dce3f01cb04b22812352fb1d1ea013",
+        "cb6de5d8be9c48dc8d1a1459317fb3ce",
+        "99fbd7d850fd451cad5402ea9c41f964"
+      ]
+    },
+    {
+      "name": "autoscaler-ppo-csv",
+      "run_ids": [
+        "8d70780a41234ce7a6392ce3d442154e"
+      ]
+    },
+    {
+      "name": "autoscaler-ppo-curriculum-100",
+      "run_ids": [
+        "40197f248e3a4ea3b9d0ab723408d536"
+      ]
+    },
+    {
+      "name": "autoscaler-ppo-curriculum-200",
+      "run_ids": [
+        "0f96b58f0a154cb09e0033e7cb6888de"
+      ]
+    },
+    {
+      "name": "autoscaler-ppo-curriculum-50",
+      "run_ids": [
+        "0ed2a79519044cfaac1de14df7992d71"
+      ]
+    },
+    {
+      "name": "autoscaler-ppo-lr1e4",
+      "run_ids": [
+        "8c7524f066bf471d9d8d956bcf6756ac"
+      ]
+    },
+    {
+      "name": "autoscaler-ppo-mdp",
+      "run_ids": [
+        "809a49f32856470fb349e4215e8560ff"
+      ]
+    },
+    {
+      "name": "autoscaler-ppo-synth",
+      "run_ids": [
+        "e7698b751ac5483ea6e026ff2d525648"
+      ]
+    }
+  ]
+}

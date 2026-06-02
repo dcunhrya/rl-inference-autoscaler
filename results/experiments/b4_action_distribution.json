@@ -1,0 +1,26 @@
+{
+  "experiment": "B4",
+  "seed": 42,
+  "action_counts": {
+    "greedy": {
+      "scale_down": 53,
+      "hold": 93,
+      "scale_up": 54
+    },
+    "do_nothing": {
+      "scale_down": 0,
+      "hold": 200,
+      "scale_up": 0
+    },
+    "ppo": {
+      "scale_down": 47,
+      "hold": 31,
+      "scale_up": 122
+    },
+    "dqn": {
+      "scale_down": 84,
+      "hold": 20,
+      "scale_up": 96
+    }
+  }
+}

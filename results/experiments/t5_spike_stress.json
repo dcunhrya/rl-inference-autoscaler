@@ -1,0 +1,13 @@
+{
+  "experiment": "T5",
+  "rows": {
+    "default": {
+      "episode_return_mean": -2826.341531544407,
+      "mean_latency_penalty": 2570.2681982110735
+    },
+    "stress": {
+      "episode_return_mean": -10118.128500857933,
+      "mean_latency_penalty": 9756.668500857932
+    }
+  }
+}

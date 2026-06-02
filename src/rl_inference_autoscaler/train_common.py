@@ -11,7 +11,7 @@ from rl_inference_autoscaler.train_config import DQNSettings, TrainingSettings
 logger = logging.getLogger(__name__)
 
 
-def init_ray_local(*, num_cpus: int | None = None) -> None:
+def init_ray_local(*, num_cpus: int | None = 4) -> None:
     """
     Initialize Ray for local training.
 
@@ -66,6 +66,21 @@ def finish_mlflow_run(mlflow, summary: dict[str, Any]) -> None:
         mlflow.end_run()
 
 
+def _env_mlflow_params(settings: TrainingSettings | DQNSettings) -> dict[str, Any]:
+    cfg = dict(settings.env_config or {})
+    keys = (
+        "traffic_mode",
+        "reward_mode",
+        "cost_alpha",
+        "latency_beta",
+        "queue_penalty_gamma",
+        "churn_penalty_delta",
+        "pending_penalty_eta",
+        "util_band_penalty_zeta",
+    )
+    return {k: cfg[k] for k in keys if k in cfg}
+
+
 def ppo_mlflow_params(settings: TrainingSettings) -> dict[str, Any]:
     return {
         "algorithm": "PPO",
@@ -74,6 +89,7 @@ def ppo_mlflow_params(settings: TrainingSettings) -> dict[str, Any]:
         "lr": settings.lr,
         "gamma": settings.gamma,
         "clip_param": settings.clip_param,
+        **_env_mlflow_params(settings),
     }
 
 
@@ -89,6 +105,7 @@ def dqn_mlflow_params(settings: DQNSettings) -> dict[str, Any]:
         "target_update_freq": settings.target_update_freq,
         "double_q": settings.double_q,
         "dueling": settings.dueling,
+        **_env_mlflow_params(settings),
     }
 
 

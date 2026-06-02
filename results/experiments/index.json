@@ -1,0 +1,68 @@
+{
+  "experiments": [
+    {
+      "file": "r1_reward_sweep.json",
+      "experiment": "R1"
+    },
+    {
+      "file": "r2_r3_presets.json",
+      "experiment": "R2_R3"
+    },
+    {
+      "file": "r4_churn_eval.json",
+      "experiment": "R4_eval"
+    },
+    {
+      "file": "r6_util_band.json",
+      "experiment": "R6"
+    },
+    {
+      "file": "t2_csv_benchmark.json",
+      "experiment": null
+    },
+    {
+      "file": "t2_multi_seed.json",
+      "experiment": "T2_seeds"
+    },
+    {
+      "file": "t3_held_out.json",
+      "experiment": "T3"
+    },
+    {
+      "file": "t4_production_trace.json",
+      "experiment": "T4"
+    },
+    {
+      "file": "t5_spike_stress.json",
+      "experiment": "T5"
+    },
+    {
+      "file": "t7_cold_start.json",
+      "experiment": "T7"
+    },
+    {
+      "file": "b3_oracle_gap.json",
+      "experiment": "B3"
+    },
+    {
+      "file": "b4_action_distribution.json",
+      "experiment": "B4"
+    },
+    {
+      "file": "b5_extended_benchmark.json",
+      "experiment": "B5"
+    },
+    {
+      "file": "a10_seed_sensitivity.json",
+      "experiment": "A10"
+    },
+    {
+      "file": "a10_rl_seeds.json",
+      "experiment": "A10_rl"
+    },
+    {
+      "file": "t6_multi_trajectory.json",
+      "experiment": "T6"
+    }
+  ]
+}

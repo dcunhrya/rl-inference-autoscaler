@@ -1,0 +1,21 @@
+{
+  "experiment": "A10",
+  "episodes": 15,
+  "rows": [
+    {
+      "seed": 0,
+      "episode_return_mean": -17566.180107739907,
+      "episode_return_std": 3.637978807091713e-12
+    },
+    {
+      "seed": 42,
+      "episode_return_mean": -17566.180107739907,
+      "episode_return_std": 3.637978807091713e-12
+    },
+    {
+      "seed": 123,
+      "episode_return_mean": -17566.180107739907,
+      "episode_return_std": 3.637978807091713e-12
+    }
+  ]
+}

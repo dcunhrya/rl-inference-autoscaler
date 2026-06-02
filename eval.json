@@ -1,0 +1,14 @@
+{
+  "episodes": 50,
+  "seed": 42,
+  "fixed_replicas": 4,
+  "traffic_mode": "auto",
+  "ppo_checkpoint": "checkpoints/ppo/final",
+  "dqn_checkpoint": "checkpoints/dqn/final",
+  "mlflow_db": "mlflow.db",
+  "trajectory_episode": 0,
+  "trajectory_episodes": [0, 5, 10],
+  "plot": {
+    "faceted_scaling": true
+  }
+}

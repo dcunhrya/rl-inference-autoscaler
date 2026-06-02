@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RL Inference Autoscaler — Results Analysis</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --text: #e7ecf3;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      margin: 0;
+      padding: 2rem max(1rem, 5vw);
+      max-width: 1100px;
+      margin-inline: auto;
+    }
+    h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem; }
+    h3 { font-size: 1.05rem; color: var(--muted); }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: var(--card); }
+    tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+    .err { color: #f87171; }
+    img { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; background: #fff; }
+    .grid { display: grid; gap: 1.5rem; }
+    @media (min-width: 720px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+    pre.json-block {
+      background: var(--card);
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      border-radius: 8px;
+      max-height: 320px;
+    }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>RL Inference Autoscaler — Results</h1>
+  <p class="meta">Generated 2026-06-02 21:59 UTC · traffic_mode=auto
+  · episodes=50 · seed=42</p>
+
+  <h2>Benchmark summary</h2>
+  <p>Higher episode return is better (closer to zero). Cost and latency penalties are per-episode means.</p>
+  <table>
+    <thead>
+      <tr><th>Policy</th><th>Return (mean)</th><th>Return (std)</th><th>Cost penalty</th><th>Latency penalty</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>PPO (trained)</td><td>-692.24</td><td>0.00</td><td>299.40</td><td>392.84</td></tr>
+<tr><td>DQN (trained)</td><td>-901.89</td><td>0.00</td><td>263.20</td><td>638.69</td></tr>
+<tr><td>Greedy (oracle-style)</td><td>-17566.18</td><td>0.00</td><td>98.30</td><td>17467.88</td></tr>
+<tr><td>Target utilization (HPA)</td><td>-9519.01</td><td>0.00</td><td>170.90</td><td>9348.11</td></tr>
+<tr><td>Fixed replica (baseline)</td><td>-46820.57</td><td>0.00</td><td>80.00</td><td>46740.57</td></tr>
+<tr><td>Do nothing</td><td>-82099.02</td><td>0.00</td><td>20.00</td><td>82079.02</td></tr>
+    </tbody>
+  </table>
+
+  
+    <h2>Analysis</h2>
+    <ul>
+      <li><strong>Best RL policy (this run):</strong> DQN by episode return on
+      <code>traffic_mode=auto</code>.
+      PPO return is 3.9% of greedy magnitude (-692 vs -17566); DQN is 5.1% (-902). </li>
+      <li><strong>PPO</strong> (-692 mean return): balances replica cost
+      (299) vs latency
+      (393) on the updated trace.</li>
+      <li><strong>DQN</strong> (-902 mean return): discrete Q-learning; cost
+      263, latency
+      639.</li>
+      <li><strong>Greedy</strong> (-17566): perfect next-step RPS but cold-start
+      limits effective capacity — large latency penalty on high-RPS CSV replay.</li>
+      <li><strong>Fixed replica (n=4)</strong>:
+      -46821 — static capacity
+      cannot follow spikes in the new data.</li>
+      <li><strong>Do nothing</strong>:
+      -82099 — worst overload.</li>
+      <li><strong>Ground truth</strong> in scaling plots: ideal replica count from instantaneous
+      RPS (no boot delay). RL policies still show replica gap vs ideal (see B3 table).</li>
+    </ul>
+    
+  
+        <h2>Ground-truth gap (B3)</h2>
+        <p>Mean |active replicas − ideal replicas| on a single held-out trajectory (seed 42).
+        Greedy uses perfect next-step RPS; ideal is instantaneous capacity.</p>
+        <table>
+          <thead><tr><th>Policy</th><th>Mean |ΔN|</th><th>Max |ΔN|</th><th>RMSE</th></tr></thead>
+          <tbody><tr><td>GREEDY</td><td>1.695</td><td>10.000</td><td>2.882</td></tr><tr><td>PPO</td><td>9.600</td><td>19.000</td><td>10.669</td></tr><tr><td>DQN</td><td>7.850</td><td>15.000</td><td>8.859</td></tr></tbody>
+        </table>
+        
+  
+        <h2>CSV-only evaluation (T2)</h2>
+        <pre class='json-block'>{
+  &quot;do_nothing&quot;: {
+    &quot;episode_return_mean&quot;: -82099.01877575365,
+    &quot;mean_latency_penalty&quot;: 82079.01877575363
+  },
+  &quot;fixed_replica&quot;: {
+    &quot;episode_return_mean&quot;: -46820.57097631654,
+    &quot;mean_latency_penalty&quot;: 46740.57097631642
+  },
+  &quot;target_utilization&quot;: {
+    &quot;episode_return_mean&quot;: -9519.007500187672,
+    &quot;mean_latency_penalty&quot;: 9348.107500187683
+  },
+  &quot;greedy&quot;: {
+    &quot;episode_return_mean&quot;: -17566.180107739914,
+    &quot;mean_latency_penalty&quot;: 17467.88010773989
+  },
+  &quot;ppo&quot;: {
+    &quot;episode_return_mean&quot;: -692.2422211023406,
+    &quot;mean_latency_penalty&quot;: 392.84222110234134
+  },
+  &quot;dqn&quot;: {
+    &quot;episode_return_mean&quot;: -901.8937935551961,
+    &quot;mean_latency_penalty&quot;: 638.6937935551973
+  }
+}</pre>
+        
+
+  <h2>Figures</h2>
+  <div class="grid">
+    <figure><img src="figures/policy_comparison.png" alt="Policy comparison" loading="lazy"></figure>
+    <figure><img src="figures/pareto_frontier.png" alt="Pareto frontier" loading="lazy"></figure>
+  </div>
+  <figure><img src="figures/scaling_vs_ground_truth_combined.png" alt="Scaling vs ground truth" loading="lazy"></figure>
+  <div class="grid grid-2">
+    <figure><img src="figures/ppo_scaling_vs_ground_truth.png" alt="PPO scaling" loading="lazy"></figure>
+    <figure><img src="figures/dqn_scaling_vs_ground_truth.png" alt="DQN scaling" loading="lazy"></figure>
+  </div>
+  <div class="grid grid-2">
+    <figure><img src="figures/ppo_training_metrics.png" alt="PPO training" loading="lazy"></figure>
+    <figure><img src="figures/dqn_training_metrics.png" alt="DQN training" loading="lazy"></figure>
+  </div>
+  <figure><img src="figures/training_curves_overlay.png" alt="PPO vs DQN training overlay" loading="lazy"></figure>
+  <figure><img src="figures/scaling_vs_ground_truth_faceted.png" alt="Faceted scaling" loading="lazy"></figure>
+  <figure><img src="figures/fixed_replica_sweep.png" alt="Fixed replica sweep" loading="lazy"></figure>
+  <figure><img src="figures/return_vs_penalties_scatter.png" alt="Return vs penalties" loading="lazy"></figure>
+  <figure><img src="figures/reward_components_greedy.png" alt="Reward components" loading="lazy"></figure>
+
+  <h2>Backlog experiments (pre–Phase 3)</h2>
+<h3>R1</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;R1&quot;,
+  &quot;episodes&quot;: 10,
+  &quot;seed&quot;: 42,
+  &quot;rows&quot;: [
+    {
+      &quot;config&quot;: {
+        &quot;cost_alpha&quot;: 0.1,
+        &quot;latency_beta&quot;: 1.0,
+        &quot;queue_penalty_gamma&quot;: 0.05
+      },
+      &quot;episode_return_mean&quot;: -17566.180107739907,
+      &quot;mean_cost_penalty&quot;: 98.3000000000001,
+      &quot;mean_latency_penalty&quot;: 17467.88010773989,
+      &quot;mean_abs_gap&quot;: 1.695,
+      &quot;max_abs_gap&quot;: 10.0,
+      &quot;rmse&quot;: 2.8818396901979124
+    },
+    {
+      &quot;config&quot;: {
+        &quot;cost_alpha&quot;: 0.2,
+        &quot;latency_beta&quot;: 0.5,
+        &quot;queue_penalty_gamma&quot;: 0.05
+      },
+      &quot;episode_return_mean&quot;: -8930.54005386993,
+      &quot;mean_cost_penalty&quot;: 196.6000000000002,
+      &quot;mean_latency_penalty&quot;: 8733.940053869945,
+      &quot;mean_abs_gap&quot;: 1.695,
+      &quot;max_abs_gap&quot;: 10.0,
+      &quot;rmse&quot;: 2.8818396901979124
+    },
+    {
+      &quot;config&quot;: {
+        &quot;cost_alpha&quot;: 0.05,
+        &quot;latency_beta&quot;: 2.0,
+        &quot;queue_penalty_gamma&quot;: 0.1
+      },
+      &quot;episode_return_mean&quot;: -38038.8959440262,
+      &quot;mean_cost_penalty&quot;: 49.15000000000005,
+      &quot;mean_latency_penalty&quot;: 37989.74594402627,
+      &quot;mean_abs_gap&quot;: 1.695,
+      &quot;max_abs_gap&quot;: 10.0,
+      &quot;rmse&quot;: 2.8818396901979124
+    },
+    {
+      &quot;config&quot;: {
+        &quot;cost_alpha&quot;: 0.15,
+        &quot;latency_beta&quot;: 1.5,
+        &quot;queue_penalty_gamma&quot;: 0.05
+      },
+      &quot;episode_return_mean&quot;: -26349.270161609806,
+      &quot;mean_cost_penalty&quot;: 147.45000000000053,
+      &quot;mean_latency_penalty&quot;: 26201.82016160984,
+      &quot;mean_abs_gap&quot;: 1.695,
+      &quot;max_abs_gap&quot;: 10.0,
+      &quot;rmse&quot;: 2.8818396901979124
+    },
+    {
+      &quot;config&quot;: {
+        &quot;cost_alpha&quot;: 0.1,
+        &quot;latency_beta&quot;: 0.5,
+        &quot;queue_penalty_gamma&quot;: 0.1
+      },
+      &quot;episode_return_mean&quot;: -9595.736486006597,
+      &quot;mean_cost_penalty&quot;: 98.3000000000001,
+      &quot;mean_latency_penalty&quot;: 9497.436486006567,
+      &quot;mean_abs_gap&quot;: 1.695,
+      &quot;max_abs_gap&quot;: 10.0,
+      &quot;rmse&quot;: 2.8818396901979124
+    }
+  ]
+}</pre>
+<h3>R2_R3</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;R2_R3&quot;,
+  &quot;episodes&quot;: 20,
+  &quot;seed&quot;: 42,
+  &quot;presets&quot;: {
+    &quot;balanced_default&quot;: {
+      &quot;config&quot;: {
+        &quot;cost_alpha&quot;: 0.1,
+        &quot;latency_beta&quot;: 1.0,
+        &quot;queue_penalty_gamma&quot;: 0.05
+      },
+      &quot;episode_return_mean&quot;: -17566.180107739914,
+      &quot;mean_cost_penalty&quot;: 98.30000000000013,
+      &quot;mean_latency_penalty&quot;: 17467.88010773989
+    },
+    &quot;cost_sensitive&quot;: {
+      &quot;config&quot;: {
+        &quot;cost_alpha&quot;: 0.2,
+        &quot;latency_beta&quot;: 0.5,
+        &quot;queue_penalty_gamma&quot;: 0.05
+      },
+      &quot;episode_return_mean&quot;: -8930.540053869929,
+      &quot;mean_cost_penalty&quot;: 196.60000000000025,
+      &quot;mean_latency_penalty&quot;: 8733.940053869945
+    },
+    &quot;latency_sensitive&quot;: {
+      &quot;config&quot;: {
+        &quot;cost_alpha&quot;: 0.05,
+        &quot;latency_beta&quot;: 2.0,
+        &quot;queue_penalty_gamma&quot;: 0.1
+      },
+      &quot;episode_return_mean&quot;: -38038.8959440262,
+      &quot;mean_cost_penalty&quot;: 49.15000000000006,
+      &quot;mean_latency_penalty&quot;: 37989.74594402627
+    }
+  }
+}</pre>
+<h3>R4_eval</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;R4_eval&quot;,
+  &quot;rows&quot;: [
+    {
+      &quot;config&quot;: {
+        &quot;traffic_mode&quot;: &quot;auto&quot;
+      },
+      &quot;episode_return_mean&quot;: -17566.180107739907
+    },
+    {
+      &quot;config&quot;: {
+        &quot;traffic_mode&quot;: &quot;auto&quot;,
+        &quot;churn_penalty_delta&quot;: 0.05
+      },
+      &quot;episode_return_mean&quot;: -17571.530107739927
+    }
+  ]
+}</pre>
+<h3>R6</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;R6&quot;,
+  &quot;config&quot;: {
+    &quot;traffic_mode&quot;: &quot;auto&quot;,
+    &quot;util_band_penalty_zeta&quot;: 0.5,
+    &quot;util_band_low&quot;: 0.6,
+    &quot;util_band_high&quot;: 0.8
+  },
+  &quot;episode_return_mean&quot;: -17579.022496528985
+}</pre>
+<h3>t2_csv_benchmark.json</h3>
+<pre class='json-block'>{
+  &quot;episodes&quot;: 20,
+  &quot;seed&quot;: 42,
+  &quot;env_config&quot;: {
+    &quot;traffic_mode&quot;: &quot;csv&quot;
+  },
+  &quot;policies&quot;: {
+    &quot;do_nothing&quot;: {
+      &quot;episode_returns&quot;: [
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363,
+        -82099.01877575363
+      ],
+      &quot;episode_return_mean&quot;: -82099.01877575365,
+      &quot;episode_return_std&quot;: 1.4551915228366852e-11,
+      &quot;mean_cost_penalty&quot;: 20.00000000000001,
+      &quot;mean_latency_penalty&quot;: 82079.01877575363,
+      &quot;episodes&quot;: 20
+    },
+    &quot;fixed_replica&quot;: {
+      &quot;episode_returns&quot;: [
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536,
+        -46820.570976316536
+      ],
+      &quot;episode_return_mean&quot;: -46820.57097631654,
+      &quot;episode_return_std&quot;: 7.275957614183426e-12,
+      &quot;mean_cost_penalty&quot;: 80.00000000000004,
+      &quot;mean_latency_penalty&quot;: 46740.57097631642,
+      &quot;episodes&quot;: 20
+    },
+    &quot;target_utilization&quot;: {
+      &quot;episode_returns&quot;: [
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672,
+        -9519.007500187672
+      ],
+      &quot;episode_return_mean&quot;: -9519.007500187672,
+      &quot;episode_return_std&quot;: 0.0,
+      &quot;mean_cost_penalty&quot;: 170.90000000000038,
+      &quot;mean_latency_penalty&quot;: 9348.107500187683,
+      &quot;episodes&quot;: 20
+    },
+    &quot;greedy&quot;: {
+      &quot;episode_returns&quot;: [
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991,
+        -17566.18010773991
+      ],
+      &quot;episode_return_mean&quot;: -17566.180107739914,
+      &quot;episode_return_std&quot;: 3.637978807091713e-12,
+      &quot;mean_cost_penalty&quot;: 98.30000000000013,
+      &quot;mean_latency_penalty&quot;: 17467.88010773989,
+      &quot;episodes&quot;: 20,
+      &quot;trajectory&quot;: {
+        &quot;rps&quot;: [
+          96.03197479248047,
+          80.10059356689453,
+          69.02677917480469,
+          81.73511505126953,
+          76.99085235595703,
+          386.20892333984375,
+          416.1462097167969,
+          324.1446838378906,
+          401.2261047363281,
+          419.86114501953125,
+          357.2806701660156,
+          413.20623779296875,
+          411.9486083984375,
+          410.6161193847656,
+          413.20965576171875,
+          325.30877685546875,
+          200.56607055664062,
+          102.81563568115234,
+          67.54074096679688,
+          88.89212036132812,
+          82.3875503540039,
+          82.11235046386719,
+          69.7281265258789,
+          87.81614685058594,
+          85.45819091796875,
+          71.34563446044922,
+          151.9475555419922,
+          79.44253540039062,
+          75.43634033203125,
+          57.85466003417969,
+          160.27012634277344,
+          102.15876007080078,
+          221.77188110351562,
+          228.1408233642578,
+          175.33380126953125,
+          201.8405303955078,
+          362.4719543457031,
+          580.2107543945312,
+          571.7379150390625,
+          524.7136840820312,
+          550.045654296875,
+          576.561767578125,
+          516.38037109375,
+          552.2299194335938,
+          417.4084777832031,
+          304.26116943359375,
+          186.62393188476562,
+          60.814231872558594,
+          74.90647888183594,
+          53.43073272705078,
+          51.96712875366211,
+          72.8506851196289,
+          64.66712951660156,
+          57.90576934814453,
+          59.27906036376953,
+          204.97323608398438,
+          425.7000427246094,
+          648.5195922851562,
+          695.1200561523438,
+          610.1856079101562,
+          584.4428100585938,
+          636.5429077148438,
+          661.782470703125,
+          696.6427612304688,
+          637.7002563476562,
+          609.5001220703125,
+          666.7991943359375,
+          718.9508666992188,
+          743.73388671875,
+          615.0214233398438,
+          648.7757568359375,
+          510.6228942871094,
+          502.0994567871094,
+          502.45965576171875,
+          480.6116943359375,
+          502.1405334472656,
+          453.1088562011719,
+          489.0955505371094,
+          501.6423034667969,
+          476.0858459472656,
+          499.78759765625,
+          477.8031005859375,
+          470.4933776855469,
+          467.614990234375,
+          387.4704284667969,
+          275.0020446777344,
+          179.80062866210938,
+          220.64125061035156,
+          450.8612060546875,
+          495.566162109375,
+          538.1400756835938,
+          454.68402099609375,
+          474.5987243652344,
+          480.33172607421875,
+          547.0794067382812,
+          465.13214111328125,
+          503.7705383300781,
+          524.1865844726562,
+          509.56964111328125,
+          461.79400634765625,
+          480.0130615234375,
+          365.0889587402344,
+          44.89751434326172,
+          60.5139274597168,
+          142.602783203125,
+          46.4867057800293,
+          62.50899887084961,
+          53.6657600402832,
+          105.08016204833984,
+          30.180049896240234,
+          58.44931411743164,
+          54.86421585083008,
+          92.96207427978516,
+          74.66284942626953,
+          73.14310455322266,
+          70.40518188476562,
+          81.26862335205078,
+          81.85079193115234,
+          66.08494567871094,
+          80.72903442382812,
+          76.40776824951172,
+          60.141990661621094,
+          87.67303466796875,
+          254.0314178466797,
+          535.027099609375,
+          576.7904663085938,
+          559.9755249023438,
+          543.6565551757812,
+          556.632080078125,
+          553.6256103515625,
+          629.9682006835938,
+          560.6450805664062,
+          557.1942749023438,
+          431.050537109375,
+          325.0698547363281,
+          71.70905303955078,
+          69.73025512695312,
+          66.84529876708984,
+          91.50226593017578,
+          136.65444946289062,
+          77.52446746826172,
+          55.12397003173828,
+          61.311920166015625,
+          77.72562408447266,
+          73.8200912475586,
+          65.65568542480469,
+          80.80748748779297,
+          71.20719146728516,
+          77.24095153808594,
+          65.47310638427734,
+          56.27468490600586,
+          84.98613739013672,
+          73.51488494873047,
+          70.26274108886719,
+          81.5246810913086,
+    </pre>
+<h3>T2_seeds</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;T2_seeds&quot;,
+  &quot;traffic_mode&quot;: &quot;csv&quot;,
+  &quot;seeds&quot;: {
+    &quot;0&quot;: {
+      &quot;do_nothing&quot;: -82099.01877575365,
+      &quot;fixed_replica&quot;: -46820.57097631654,
+      &quot;target_utilization&quot;: -9519.00750018767,
+      &quot;greedy&quot;: -17566.180107739907,
+      &quot;ppo&quot;: -692.2422211023406,
+      &quot;dqn&quot;: -901.8937935551963
+    },
+    &quot;42&quot;: {
+      &quot;do_nothing&quot;: -82099.01877575365,
+      &quot;fixed_replica&quot;: -46820.57097631654,
+      &quot;target_utilization&quot;: -9519.00750018767,
+      &quot;greedy&quot;: -17566.180107739907,
+      &quot;ppo&quot;: -692.2422211023406,
+      &quot;dqn&quot;: -901.8937935551963
+    },
+    &quot;123&quot;: {
+      &quot;do_nothing&quot;: -82099.01877575365,
+      &quot;fixed_replica&quot;: -46820.57097631654,
+      &quot;target_utilization&quot;: -9519.00750018767,
+      &quot;greedy&quot;: -17566.180107739907,
+      &quot;ppo&quot;: -692.2422211023406,
+      &quot;dqn&quot;: -901.8937935551963
+    }
+  }
+}</pre>
+<h3>T3</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;T3&quot;,
+  &quot;evals&quot;: {
+    &quot;ppo_synth_train_csv_eval&quot;: {
+      &quot;episode_return_mean&quot;: -3013.7741610954913,
+      &quot;mean_cost_penalty&quot;: 297.30000000000007,
+      &quot;mean_latency_penalty&quot;: 2716.474161095486
+    },
+    &quot;ppo_csv_train_synth_eval&quot;: {
+      &quot;episode_return_mean&quot;: -467.06424954430594,
+      &quot;mean_cost_penalty&quot;: 367.68500000000006,
+      &quot;mean_latency_penalty&quot;: 99.37924954430585
+    }
+  }
+}</pre>
+<h3>T4</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;T4&quot;,
+  &quot;status&quot;: &quot;complete&quot;,
+  &quot;note&quot;: &quot;data/traffic_trace.csv is the production-style trace used via traffic_mode=auto/csv&quot;
+}</pre>
+<h3>T5</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;T5&quot;,
+  &quot;rows&quot;: {
+    &quot;default&quot;: {
+      &quot;episode_return_mean&quot;: -2826.341531544407,
+      &quot;mean_latency_penalty&quot;: 2570.2681982110735
+    },
+    &quot;stress&quot;: {
+      &quot;episode_return_mean&quot;: -10118.128500857933,
+      &quot;mean_latency_penalty&quot;: 9756.668500857932
+    }
+  }
+}</pre>
+<h3>T7</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;T7&quot;,
+  &quot;episodes&quot;: 10,
+  &quot;seed&quot;: 42,
+  &quot;rows&quot;: [
+    {
+      &quot;cold_start_steps&quot;: 0,
+      &quot;policies&quot;: {
+        &quot;greedy&quot;: {
+          &quot;episode_return_mean&quot;: -9502.766338433079,
+          &quot;mean_latency_penalty&quot;: 9395.266338433048
+        },
+        &quot;ppo&quot;: {
+          &quot;episode_return_mean&quot;: -363.6833451481749,
+          &quot;mean_latency_penalty&quot;: 56.78334514817506
+        },
+        &quot;dqn&quot;: {
+          &quot;episode_return_mean&quot;: -530.4083002941743,
+          &quot;mean_latency_penalty&quot;: 264.10830029417497
+        }
+      }
+    },
+    {
+      &quot;cold_start_steps&quot;: 3,
+      &quot;policies&quot;: {
+        &quot;greedy&quot;: {
+          &quot;episode_return_mean&quot;: -17566.180107739907,
+          &quot;mean_latency_penalty&quot;: 17467.88010773989
+        },
+        &quot;ppo&quot;: {
+          &quot;episode_return_mean&quot;: -692.2422211023406,
+          &quot;mean_latency_penalty&quot;: 392.8422211023413
+        },
+        &quot;dqn&quot;: {
+          &quot;episode_return_mean&quot;: -901.8937935551961,
+          &quot;mean_latency_penalty&quot;: 638.6937935551971
+        }
+      }
+    },
+    {
+      &quot;cold_start_steps&quot;: 5,
+      &quot;policies&quot;: {
+        &quot;greedy&quot;: {
+          &quot;episode_return_mean&quot;: -24617.245536861235,
+          &quot;mean_latency_penalty&quot;: 24524.64553686121
+        },
+        &quot;ppo&quot;: {
+          &quot;episode_return_mean&quot;: -1627.6395566112192,
+          &quot;mean_latency_penalty&quot;: 1335.8395566112172
+        },
+        &quot;dqn&quot;: {
+          &quot;episode_return_mean&quot;: -1928.5885276571728,
+          &quot;mean_latency_penalty&quot;: 1659.8885276571723
+        }
+      }
+    },
+    {
+      &quot;cold_start_steps&quot;: 10,
+      &quot;policies&quot;: {
+        &quot;greedy&quot;: {
+          &quot;episode_return_mean&quot;: -36943.56347652146,
+          &quot;mean_latency_penalty&quot;: 36862.76347652158
+        },
+        &quot;ppo&quot;: {
+          &quot;episode_return_mean&quot;: -5201.336326965263,
+          &quot;mean_latency_penalty&quot;: 4919.93632696528
+        },
+        &quot;dqn&quot;: {
+          &quot;episode_return_mean&quot;: -5319.252138234724,
+          &quot;mean_latency_penalty&quot;: 5059.852138234723
+        }
+      }
+    }
+  ]
+}</pre>
+<h3>B3</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;B3&quot;,
+  &quot;seed&quot;: 42,
+  &quot;policies&quot;: {
+    &quot;greedy&quot;: {
+      &quot;mean_abs_gap&quot;: 1.695,
+      &quot;max_abs_gap&quot;: 10.0,
+      &quot;rmse&quot;: 2.8818396901979124
+    },
+    &quot;ppo&quot;: {
+      &quot;mean_abs_gap&quot;: 9.6,
+      &quot;max_abs_gap&quot;: 19.0,
+      &quot;rmse&quot;: 10.6686456497533
+    },
+    &quot;dqn&quot;: {
+      &quot;mean_abs_gap&quot;: 7.85,
+      &quot;max_abs_gap&quot;: 15.0,
+      &quot;rmse&quot;: 8.859458222713169
+    }
+  }
+}</pre>
+<h3>B4</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;B4&quot;,
+  &quot;seed&quot;: 42,
+  &quot;action_counts&quot;: {
+    &quot;greedy&quot;: {
+      &quot;scale_down&quot;: 53,
+      &quot;hold&quot;: 93,
+      &quot;scale_up&quot;: 54
+    },
+    &quot;do_nothing&quot;: {
+      &quot;scale_down&quot;: 0,
+      &quot;hold&quot;: 200,
+      &quot;scale_up&quot;: 0
+    },
+    &quot;ppo&quot;: {
+      &quot;scale_down&quot;: 47,
+      &quot;hold&quot;: 31,
+      &quot;scale_up&quot;: 122
+    },
+    &quot;dqn&quot;: {
+      &quot;scale_down&quot;: 84,
+      &quot;hold&quot;: 20,
+      &quot;scale_up&quot;: 96
+    }
+  }
+}</pre>
+<h3>B5</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;B5&quot;,
+  &quot;episodes&quot;: 50,
+  &quot;seed&quot;: 42,
+  &quot;policies&quot;: {
+    &quot;do_nothing&quot;: {
+      &quot;episode_return_mean&quot;: -82099.01877575363,
+      &quot;episode_return_std&quot;: 0.0,
+      &quot;mean_cost_penalty&quot;: 20.000000000000014,
+      &quot;mean_latency_penalty&quot;: 82079.01877575362,
+      &quot;error&quot;: null
+    },
+    &quot;fixed_replica&quot;: {
+      &quot;episode_return_mean&quot;: -46820.57097631653,
+      &quot;episode_return_std&quot;: 7.275957614183426e-12,
+      &quot;mean_cost_penalty&quot;: 80.00000000000006,
+      &quot;mean_latency_penalty&quot;: 46740.57097631642,
+      &quot;error&quot;: null
+    },
+    &quot;target_utilization&quot;: {
+      &quot;episode_return_mean&quot;: -9519.00750018767,
+      &quot;episode_return_std&quot;: 1.8189894035458565e-12,
+      &quot;mean_cost_penalty&quot;: 170.90000000000032,
+      &quot;mean_latency_penalty&quot;: 9348.107500187687,
+      &quot;error&quot;: null
+    },
+    &quot;greedy&quot;: {
+      &quot;episode_return_mean&quot;: -17566.18010773991,
+      &quot;episode_return_std&quot;: 0.0,
+      &quot;mean_cost_penalty&quot;: 98.30000000000011,
+      &quot;mean_latency_penalty&quot;: 17467.88010773989,
+      &quot;error&quot;: null
+    },
+    &quot;ppo&quot;: {
+      &quot;episode_return_mean&quot;: -692.2422211023409,
+      &quot;episode_return_std&quot;: 1.1368683772161603e-13,
+      &quot;mean_cost_penalty&quot;: 299.3999999999997,
+      &quot;mean_latency_penalty&quot;: 392.84222110234134,
+      &quot;error&quot;: null
+    },
+    &quot;dqn&quot;: {
+      &quot;episode_return_mean&quot;: -901.893793555196,
+      &quot;episode_return_std&quot;: 1.1368683772161603e-13,
+      &quot;mean_cost_penalty&quot;: 263.2000000000003,
+      &quot;mean_latency_penalty&quot;: 638.6937935551973,
+      &quot;error&quot;: null
+    }
+  }
+}</pre>
+<h3>A10</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;A10&quot;,
+  &quot;episodes&quot;: 15,
+  &quot;rows&quot;: [
+    {
+      &quot;seed&quot;: 0,
+      &quot;episode_return_mean&quot;: -17566.180107739907,
+      &quot;episode_return_std&quot;: 3.637978807091713e-12
+    },
+    {
+      &quot;seed&quot;: 42,
+      &quot;episode_return_mean&quot;: -17566.180107739907,
+      &quot;episode_return_std&quot;: 3.637978807091713e-12
+    },
+    {
+      &quot;seed&quot;: 123,
+      &quot;episode_return_mean&quot;: -17566.180107739907,
+      &quot;episode_return_std&quot;: 3.637978807091713e-12
+    }
+  ]
+}</pre>
+<h3>A10_rl</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;A10_rl&quot;,
+  &quot;episodes&quot;: 15,
+  &quot;rows&quot;: [
+    {
+      &quot;seed&quot;: 0,
+      &quot;ppo&quot;: -692.2422211023406,
+      &quot;dqn&quot;: -901.8937935551963,
+      &quot;greedy&quot;: -17566.180107739907
+    },
+    {
+      &quot;seed&quot;: 42,
+      &quot;ppo&quot;: -692.2422211023406,
+      &quot;dqn&quot;: -901.8937935551963,
+      &quot;greedy&quot;: -17566.180107739907
+    },
+    {
+      &quot;seed&quot;: 123,
+      &quot;ppo&quot;: -692.2422211023406,
+      &quot;dqn&quot;: -901.8937935551963,
+      &quot;greedy&quot;: -17566.180107739907
+    }
+  ]
+}</pre>
+<h3>T6</h3>
+<pre class='json-block'>{
+  &quot;experiment&quot;: &quot;T6&quot;,
+  &quot;seed&quot;: 42,
+  &quot;episodes&quot;: [
+    {
+      &quot;episode_index&quot;: 0,
+      &quot;oracle_gap&quot;: {
+        &quot;mean_abs_gap&quot;: 1.695,
+        &quot;max_abs_gap&quot;: 10.0,
+        &quot;rmse&quot;: 2.8818396901979124
+      }
+    },
+    {
+      &quot;episode_index&quot;: 5,
+      &quot;oracle_gap&quot;: {
+        &quot;mean_abs_gap&quot;: 1.695,
+        &quot;max_abs_gap&quot;: 10.0,
+        &quot;rmse&quot;: 2.8818396901979124
+      }
+    },
+    {
+      &quot;episode_index&quot;: 10,
+      &quot;oracle_gap&quot;: {
+        &quot;mean_abs_gap&quot;: 1.695,
+        &quot;max_abs_gap&quot;: 10.0,
+        &quot;rmse&quot;: 2.8818396901979124
+      }
+    }
+  ]
+}</pre>
+</body>
+</html>

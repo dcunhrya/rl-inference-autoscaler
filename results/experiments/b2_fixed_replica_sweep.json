@@ -1,0 +1,25 @@
+{
+  "experiment": "B2",
+  "sweep": {
+    "2": {
+      "episode_return_mean": -65686.97828116729,
+      "mean_cost_penalty": 40.00000000000002,
+      "mean_latency_penalty": 65646.97828116741
+    },
+    "4": {
+      "episode_return_mean": -46820.57097631653,
+      "mean_cost_penalty": 80.00000000000004,
+      "mean_latency_penalty": 46740.57097631643
+    },
+    "8": {
+      "episode_return_mean": -16736.46237858268,
+      "mean_cost_penalty": 160.00000000000009,
+      "mean_latency_penalty": 16576.462378582743
+    },
+    "12": {
+      "episode_return_mean": -1607.5502155112792,
+      "mean_cost_penalty": 239.99999999999915,
+      "mean_latency_penalty": 1367.5502155112747
+    }
+  }
+}

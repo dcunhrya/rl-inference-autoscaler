@@ -57,7 +57,7 @@ def env_config_dict(settings: TrainingSettings | DQNSettings) -> dict[str, Any]:
 
 
 def _ensure_checkpoint_dir(checkpoint_dir: str) -> Path:
-    checkpoint_path = Path(checkpoint_dir)
+    checkpoint_path = Path(checkpoint_dir).resolve()
     checkpoint_path.mkdir(parents=True, exist_ok=True)
     return checkpoint_path
 
@@ -101,9 +101,22 @@ def build_ppo_config(settings: TrainingSettings):
     return config, checkpoint_path
 
 
+def _dqn_replay_buffer_config(settings: DQNSettings) -> dict[str, Any]:
+    """Episode replay buffer for DQN on RLlib's new API stack."""
+    return {
+        "type": "PrioritizedEpisodeReplayBuffer",
+        "capacity": settings.replay_buffer_capacity,
+        "alpha": 0.6,
+        "beta": 0.4,
+    }
+
+
 def build_dqn_config(settings: DQNSettings):
     """
     Build a Ray RLlib DQNConfig for AutoscalerEnv.
+
+    DQN uses RLlib's new API stack (PrioritizedEpisodeReplayBuffer). The old
+    stack rejects episode buffers and hits a Ray bug with MultiAgentPrioritizedReplayBuffer.
 
     Requires optional dependency: ``uv sync --extra train``.
     """
@@ -130,17 +143,19 @@ def build_dqn_config(settings: DQNSettings):
             num_steps_sampled_before_learning_starts=settings.learning_starts,
             target_network_update_freq=settings.target_update_freq,
             epsilon=epsilon,
-            replay_buffer_config={"capacity": settings.replay_buffer_capacity},
-            model={
+            replay_buffer_config=_dqn_replay_buffer_config(settings),
+        )
+        .rl_module(
+            model_config={
                 "fcnet_hiddens": [256, 256],
                 "fcnet_activation": "relu",
-            },
+            }
         )
         .evaluation(evaluation_interval=10, evaluation_duration=5)
         .checkpointing(export_native_model_files=True)
         .api_stack(
-            enable_rl_module_and_learner=False,
-            enable_env_runner_and_connector_v2=False,
+            enable_rl_module_and_learner=True,
+            enable_env_runner_and_connector_v2=True,
         )
     )
     return config, checkpoint_path
@@ -159,9 +174,10 @@ def validate_ppo_config(settings: TrainingSettings | None = None) -> dict[str, A
 
 
 def validate_dqn_config(settings: DQNSettings | None = None) -> dict[str, Any]:
-    """Smoke-check that RLlib DQN config builds without starting Ray."""
+    """Smoke-check that RLlib DQN config builds and validates without starting Ray."""
     settings = settings or DQNSettings(num_iterations=1, num_env_runners=1)
-    _config, checkpoint_path = build_dqn_config(settings)
+    config, checkpoint_path = build_dqn_config(settings)
+    config.validate()
     return {
         "algorithm": "DQN",
         "checkpoint_dir": str(checkpoint_path),

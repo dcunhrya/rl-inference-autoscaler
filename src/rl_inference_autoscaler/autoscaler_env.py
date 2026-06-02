@@ -8,6 +8,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
+from rl_inference_autoscaler.reward_config import apply_reward_mode
 from rl_inference_autoscaler.traffic import TrafficGenerator, TrafficMode
 
 
@@ -26,7 +27,7 @@ class AutoscalerEnv(gym.Env):
 
     def __init__(self, config: dict[str, Any] | None = None):
         super().__init__()
-        cfg = config or {}
+        cfg = apply_reward_mode(dict(config or {}))
 
         self.max_replicas = int(cfg.get("max_replicas", 20))
         self.max_rps = float(cfg.get("max_rps", 1000.0))
@@ -38,6 +39,13 @@ class AutoscalerEnv(gym.Env):
         self.max_queue = float(cfg.get("max_queue", 500.0))
         self.max_steps_per_episode = int(cfg.get("max_steps_per_episode", 200))
         self.initial_replicas = float(cfg.get("initial_replicas", 1.0))
+        # R4–R6 optional reward terms (default off for backward compatibility)
+        self.churn_penalty_delta = float(cfg.get("churn_penalty_delta", 0.0))
+        self.pending_penalty_eta = float(cfg.get("pending_penalty_eta", 0.0))
+        self.util_band_low = float(cfg.get("util_band_low", 0.6))
+        self.util_band_high = float(cfg.get("util_band_high", 0.8))
+        self.util_band_penalty_zeta = float(cfg.get("util_band_penalty_zeta", 0.0))
+        self.reward_mode = cfg.get("reward_mode")
 
         traffic_mode: TrafficMode = cfg.get("traffic_mode", "auto")
         csv_path = cfg.get("traffic_csv_path")
@@ -64,6 +72,47 @@ class AutoscalerEnv(gym.Env):
         self._active_replicas = 1.0
         self._pending_boots: list[int] = []
         self._queue_depth = 0.0
+        self._prev_active_replicas = 1.0
+
+    def _compute_reward(
+        self,
+        *,
+        action: int,
+        overload: float,
+        dropped_requests: float,
+        queue_depth: float,
+        utilization: float,
+        pending_count: int,
+    ) -> tuple[float, dict[str, float]]:
+        cost_penalty = self.cost_alpha * self._active_replicas
+        latency_penalty = self.latency_beta * (
+            overload + dropped_requests + self.queue_penalty_gamma * queue_depth
+        )
+        churn_penalty = 0.0
+        if self.churn_penalty_delta > 0.0 and int(action) != 1:
+            churn_penalty = self.churn_penalty_delta
+        pending_penalty = self.pending_penalty_eta * float(pending_count)
+        util_penalty = 0.0
+        if self.util_band_penalty_zeta > 0.0:
+            if utilization < self.util_band_low:
+                util_penalty = self.util_band_penalty_zeta * (
+                    self.util_band_low - utilization
+                )
+            elif utilization > self.util_band_high:
+                util_penalty = self.util_band_penalty_zeta * (
+                    utilization - self.util_band_high
+                )
+        total = cost_penalty + latency_penalty + churn_penalty + pending_penalty + util_penalty
+        reward = -total
+        components = {
+            "cost_penalty": cost_penalty,
+            "latency_penalty": latency_penalty,
+            "churn_penalty": churn_penalty,
+            "pending_penalty": pending_penalty,
+            "util_penalty": util_penalty,
+            "reward": reward,
+        }
+        return reward, components
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
@@ -78,6 +127,7 @@ class AutoscalerEnv(gym.Env):
         )
         self._pending_boots = []
         self._queue_depth = 0.0
+        self._prev_active_replicas = self._active_replicas
 
         initial_rps = self.traffic.reset(self._rng)
         capacity = self._active_replicas * self.throughput_per_replica
@@ -150,13 +200,17 @@ class AutoscalerEnv(gym.Env):
         dropped_requests, queue_depth = self._process_queue(new_rps, capacity)
 
         overload = max(0.0, new_rps - capacity)
-        cost_penalty = self.cost_alpha * self._active_replicas
-        latency_penalty = self.latency_beta * (
-            overload + dropped_requests + self.queue_penalty_gamma * queue_depth
-        )
-        reward = -(cost_penalty + latency_penalty)
-
         utilization = float(np.clip(new_rps / max(capacity, 1e-6), 0.0, 1.0))
+        pending_count = len(self._pending_boots)
+        reward, components = self._compute_reward(
+            action=int(action),
+            overload=overload,
+            dropped_requests=dropped_requests,
+            queue_depth=queue_depth,
+            utilization=utilization,
+            pending_count=pending_count,
+        )
+        self._prev_active_replicas = self._active_replicas
         self.state = np.array(
             [
                 new_rps,
@@ -173,8 +227,10 @@ class AutoscalerEnv(gym.Env):
             "dropped_requests": dropped_requests,
             "overload_rps": overload,
             "active_replicas": self._active_replicas,
-            "pending_replicas": len(self._pending_boots),
+            "pending_replicas": pending_count,
             "queue_depth": queue_depth,
             "traffic_mode": self.traffic.resolved_mode,
+            "utilization": utilization,
+            **components,
         }
         return self.state, float(reward), terminated, truncated, info

@@ -1,0 +1,37 @@
+{
+  "experiment": "R2_R3",
+  "episodes": 20,
+  "seed": 42,
+  "presets": {
+    "balanced_default": {
+      "config": {
+        "cost_alpha": 0.1,
+        "latency_beta": 1.0,
+        "queue_penalty_gamma": 0.05
+      },
+      "episode_return_mean": -17566.180107739914,
+      "mean_cost_penalty": 98.30000000000013,
+      "mean_latency_penalty": 17467.88010773989
+    },
+    "cost_sensitive": {
+      "config": {
+        "cost_alpha": 0.2,
+        "latency_beta": 0.5,
+        "queue_penalty_gamma": 0.05
+      },
+      "episode_return_mean": -8930.540053869929,
+      "mean_cost_penalty": 196.60000000000025,
+      "mean_latency_penalty": 8733.940053869945
+    },
+    "latency_sensitive": {
+      "config": {
+        "cost_alpha": 0.05,
+        "latency_beta": 2.0,
+        "queue_penalty_gamma": 0.1
+      },
+      "episode_return_mean": -38038.8959440262,
+      "mean_cost_penalty": 49.15000000000006,
+      "mean_latency_penalty": 37989.74594402627
+    }
+  }
+}

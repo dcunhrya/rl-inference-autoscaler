@@ -1,0 +1,5 @@
+{
+  "experiment": "T4",
+  "status": "complete",
+  "note": "data/traffic_trace.csv is the production-style trace used via traffic_mode=auto/csv"
+}

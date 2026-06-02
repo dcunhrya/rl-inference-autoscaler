@@ -1,0 +1,15 @@
+{
+  "experiment": "T3",
+  "evals": {
+    "ppo_synth_train_csv_eval": {
+      "episode_return_mean": -3013.7741610954913,
+      "mean_cost_penalty": 297.30000000000007,
+      "mean_latency_penalty": 2716.474161095486
+    },
+    "ppo_csv_train_synth_eval": {
+      "episode_return_mean": -467.06424954430594,
+      "mean_cost_penalty": 367.68500000000006,
+      "mean_latency_penalty": 99.37924954430585
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "experiment": "T6",
+  "episodes": [
+    {
+      "episode_index": 5,
+      "policy": "ppo",
+      "steps": 200
+    },
+    {
+      "episode_index": 5,
+      "policy": "dqn",
+      "steps": 200
+    },
+    {
+      "episode_index": 5,
+      "policy": "greedy",
+      "steps": 200
+    },
+    {
+      "episode_index": 10,
+      "policy": "ppo",
+      "steps": 200
+    },
+    {
+      "episode_index": 10,
+      "policy": "dqn",
+      "steps": 200
+    },
+    {
+      "episode_index": 10,
+      "policy": "greedy",
+      "steps": 200
+    }
+  ]
+}

@@ -18,6 +18,7 @@ from rl_inference_autoscaler.baselines import (
     fixed_replica_policy,
     greedy_policy,
     ideal_replica_count,
+    target_utilization_policy,
 )
 from rl_inference_autoscaler.train_common import init_ray_local
 
@@ -140,6 +141,8 @@ def _rollout_with_action_fn(
     returns: list[float] = []
     costs: list[float] = []
     latencies: list[float] = []
+    churns: list[float] = []
+    pendings: list[float] = []
     trajectory: dict[str, list] | None = None
 
     for ep in range(episodes):
@@ -147,6 +150,8 @@ def _rollout_with_action_fn(
         total = 0.0
         ep_cost = 0.0
         ep_latency = 0.0
+        ep_churn = 0.0
+        ep_pending = 0.0
         truncated = False
         record = record_trajectory_episode is not None and ep == record_trajectory_episode
         if record:
@@ -155,15 +160,20 @@ def _rollout_with_action_fn(
                 "active_replicas": [],
                 "ideal_replicas": [],
                 "actions": [],
+                "cost_penalty": [],
+                "latency_penalty": [],
             }
 
         while not truncated:
             action = action_fn(obs)
             obs, reward, _term, truncated, info = env.step(action)
             total += reward
-            step_cost, step_lat = _step_penalties(env, info)
+            step_cost = float(info.get("cost_penalty", _step_penalties(env, info)[0]))
+            step_lat = float(info.get("latency_penalty", _step_penalties(env, info)[1]))
             ep_cost += step_cost
             ep_latency += step_lat
+            ep_churn += float(info.get("churn_penalty", 0.0))
+            ep_pending += float(info.get("pending_penalty", 0.0))
             if record and trajectory is not None:
                 trajectory["rps"].append(float(obs[0]))
                 trajectory["active_replicas"].append(float(info["active_replicas"]))
@@ -171,10 +181,14 @@ def _rollout_with_action_fn(
                     ideal_replica_count(float(obs[0]), env)
                 )
                 trajectory["actions"].append(action)
+                trajectory["cost_penalty"].append(step_cost)
+                trajectory["latency_penalty"].append(step_lat)
 
         returns.append(total)
         costs.append(ep_cost)
         latencies.append(ep_latency)
+        churns.append(ep_churn)
+        pendings.append(ep_pending)
 
     result: dict[str, Any] = {
         "episode_returns": returns,
@@ -182,6 +196,8 @@ def _rollout_with_action_fn(
         "episode_return_std": float(np.std(returns)),
         "mean_cost_penalty": float(np.mean(costs)),
         "mean_latency_penalty": float(np.mean(latencies)),
+        "mean_churn_penalty": float(np.mean(churns)),
+        "mean_pending_penalty": float(np.mean(pendings)),
         "episodes": episodes,
     }
     if trajectory is not None:
@@ -254,7 +270,7 @@ def load_mlflow_training_metrics(
     db_path: str | Path = "mlflow.db",
     *,
     experiment_name: str = "autoscaler-ppo",
-    prefer_iterations: int | None = 50,
+    prefer_iterations: int | None = 100,
     metric_keys: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     """Load per-iteration metrics from the MLflow SQLite store."""
@@ -355,6 +371,7 @@ def run_benchmark_suite(
     policies: list[tuple[str, PolicyFn, dict[str, Any] | None]] = [
         ("do_nothing", do_nothing_policy, None),
         ("fixed_replica", fixed_replica_policy, {"initial_replicas": float(fixed_replicas)}),
+        ("target_utilization", target_utilization_policy, None),
         ("greedy", greedy_policy, None),
     ]
 

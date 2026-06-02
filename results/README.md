@@ -15,7 +15,7 @@ uv sync --extra train --no-editable
 | `figures/pareto_frontier.png` | Cost vs latency penalty tradeoff (Pareto frontier) |
 | `figures/ppo_scaling_vs_ground_truth.png` | PPO active replicas vs ideal replicas over one episode |
 | `figures/dqn_scaling_vs_ground_truth.png` | DQN active replicas vs ideal replicas over one episode |
-| `figures/scaling_vs_ground_truth_combined.png` | Side-by-side PPO / DQN / Greedy vs ground truth (same episode) |
+| `figures/scaling_vs_ground_truth_combined.png` | PPO, DQN, Greedy vs ground truth overlaid (same episode) |
 | `figures/ppo_training_metrics.png` | PPO curves from `mlflow.db` (`autoscaler-ppo` experiment) |
 | `figures/dqn_training_metrics.png` | DQN curves from `mlflow.db` (`autoscaler-dqn` experiment) |
 | `benchmark_summary.json` | Numeric summary for reports |

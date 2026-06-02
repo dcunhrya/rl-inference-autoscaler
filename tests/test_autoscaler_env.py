@@ -77,7 +77,9 @@ def test_traffic_generator_csv():
     gen = TrafficGenerator(mode="csv", csv_path=path)
     rng = np.random.default_rng(0)
     assert gen.resolved_mode == "csv"
-    assert gen.reset(rng) == pytest.approx(25.0)
+    first = gen.reset(rng)
+    assert 0.0 <= first <= gen.max_rps
+    assert len(gen._csv_rps) >= 100  # noqa: SLF001 — long GPU-style trace
 
 
 def test_baseline_evaluation():
@@ -87,6 +89,29 @@ def test_baseline_evaluation():
 
 
 def test_target_utilization_policy_bounds():
-    obs = np.array([100.0, 0.9, 5.0, 10.0], dtype=np.float32)
-    action = target_utilization_policy(obs)
+    env = AutoscalerEnv(config={"traffic_mode": "synthetic"})
+    obs, _ = env.reset(seed=42)
+    action = target_utilization_policy(obs, env)
     assert action in (0, 1, 2)
+
+
+@pytest.mark.parametrize(
+    "env_cfg",
+    [
+        {"traffic_mode": "synthetic"},
+        {"traffic_mode": "synthetic", "reward_mode": "cost_sensitive"},
+        {"traffic_mode": "synthetic", "churn_penalty_delta": 0.05},
+        {"traffic_mode": "synthetic", "pending_penalty_eta": 0.02},
+        {"traffic_mode": "synthetic", "util_band_penalty_zeta": 0.1},
+    ],
+)
+def test_reward_ablation_step_shape(env_cfg):
+    """E1: reward ablation smoke — step() info keys stable."""
+    env = AutoscalerEnv(config=env_cfg)
+    obs, _ = env.reset(seed=0)
+    obs, reward, term, trunc, info = env.step(1)
+    assert obs.shape == (4,)
+    assert isinstance(reward, float)
+    assert "cost_penalty" in info
+    assert "latency_penalty" in info
+    assert not term

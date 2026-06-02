@@ -6,3 +6,4 @@ checkpoints/
 mlruns/
 .mlflow/
 mlflow.db
+.DS_Store

@@ -1,0 +1,30 @@
+{
+  "experiment": "T6",
+  "seed": 42,
+  "episodes": [
+    {
+      "episode_index": 0,
+      "oracle_gap": {
+        "mean_abs_gap": 1.695,
+        "max_abs_gap": 10.0,
+        "rmse": 2.8818396901979124
+      }
+    },
+    {
+      "episode_index": 5,
+      "oracle_gap": {
+        "mean_abs_gap": 1.695,
+        "max_abs_gap": 10.0,
+        "rmse": 2.8818396901979124
+      }
+    },
+    {
+      "episode_index": 10,
+      "oracle_gap": {
+        "mean_abs_gap": 1.695,
+        "max_abs_gap": 10.0,
+        "rmse": 2.8818396901979124
+      }
+    }
+  ]
+}

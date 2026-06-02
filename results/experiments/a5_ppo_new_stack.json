@@ -1,0 +1,16 @@
+{
+  "experiment": "A5",
+  "note": "PPO old API stack; DQN new stack (single eval path for DQN)",
+  "ppo_validate": {
+    "algorithm": "PPO",
+    "checkpoint_dir": "/Users/dcunhrya/Documents/random_projects/rl-inference-autoscaler/checkpoints/ppo",
+    "num_env_runners": 1,
+    "env_class": "AutoscalerEnv"
+  },
+  "dqn_validate": {
+    "algorithm": "DQN",
+    "checkpoint_dir": "/Users/dcunhrya/Documents/random_projects/rl-inference-autoscaler/checkpoints/dqn",
+    "num_env_runners": 1,
+    "env_class": "AutoscalerEnv"
+  }
+}
