@@ -251,23 +251,23 @@ def main() -> None:
 
   <h2>Figures</h2>
   <div class="grid">
-    <figure>{_img('figures/policy_comparison.png', 'Policy comparison')}</figure>
-    <figure>{_img('figures/pareto_frontier.png', 'Pareto frontier')}</figure>
+    <figure>{_img('figures/benchmark/policy_comparison.png', 'Policy comparison')}</figure>
+    <figure>{_img('figures/benchmark/pareto_frontier.png', 'Pareto frontier')}</figure>
   </div>
-  <figure>{_img('figures/scaling_vs_ground_truth_combined.png', 'Scaling vs ground truth')}</figure>
+  <figure>{_img('figures/scaling/scaling_vs_ground_truth_combined.png', 'Scaling vs ground truth')}</figure>
   <div class="grid grid-2">
-    <figure>{_img('figures/ppo_scaling_vs_ground_truth.png', 'PPO scaling')}</figure>
-    <figure>{_img('figures/dqn_scaling_vs_ground_truth.png', 'DQN scaling')}</figure>
+    <figure>{_img('figures/scaling/ppo_scaling_vs_ground_truth.png', 'PPO scaling')}</figure>
+    <figure>{_img('figures/scaling/dqn_scaling_vs_ground_truth.png', 'DQN scaling')}</figure>
   </div>
   <div class="grid grid-2">
-    <figure>{_img('figures/ppo_training_metrics.png', 'PPO training')}</figure>
-    <figure>{_img('figures/dqn_training_metrics.png', 'DQN training')}</figure>
+    <figure>{_img('figures/training/ppo_training_metrics.png', 'PPO training')}</figure>
+    <figure>{_img('figures/training/dqn_training_metrics.png', 'DQN training')}</figure>
   </div>
-  <figure>{_img('figures/training_curves_overlay.png', 'PPO vs DQN training overlay')}</figure>
-  <figure>{_img('figures/scaling_vs_ground_truth_faceted.png', 'Faceted scaling')}</figure>
-  <figure>{_img('figures/fixed_replica_sweep.png', 'Fixed replica sweep')}</figure>
-  <figure>{_img('figures/return_vs_penalties_scatter.png', 'Return vs penalties')}</figure>
-  <figure>{_img('figures/reward_components_greedy.png', 'Reward components')}</figure>
+  <figure>{_img('figures/training/training_curves_overlay.png', 'PPO vs DQN training overlay')}</figure>
+  <figure>{_img('figures/scaling/scaling_vs_ground_truth_faceted.png', 'Faceted scaling')}</figure>
+  <figure>{_img('figures/baselines/fixed_replica_sweep.png', 'Fixed replica sweep')}</figure>
+  <figure>{_img('figures/benchmark/return_vs_penalties_scatter.png', 'Return vs penalties')}</figure>
+  <figure>{_img('figures/baselines/reward_components_greedy.png', 'Reward components')}</figure>
 
   {_section_experiments()}
 </body>

@@ -128,7 +128,7 @@ uv sync --extra train --no-editable
 .venv/bin/python scripts/generate_results_plots.py
 ```
 
-Outputs: `results/figures/policy_comparison.png`, `pareto_frontier.png`, `ppo_scaling_vs_ground_truth.png`, `dqn_scaling_vs_ground_truth.png`, `ppo_training_metrics.png`, `dqn_training_metrics.png`, `results/benchmark_summary.json`.
+Outputs under `results/figures/{benchmark,training,scaling,baselines}/` plus `results/benchmark_summary.json`. See `results/figures/README.md`.
 
 ## Development
 

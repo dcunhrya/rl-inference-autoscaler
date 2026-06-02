@@ -7,25 +7,55 @@ uv sync --extra train --no-editable
 .venv/bin/python scripts/generate_results_plots.py
 ```
 
-## Outputs
+See also: [`analysis.html`](analysis.html) · [`figures/README.md`](figures/README.md)
+
+## Figures (by folder)
+
+### `figures/benchmark/`
 
 | File | Description |
 |------|-------------|
-| `figures/policy_comparison.png` | Mean episode return: PPO, DQN, Greedy, fixed replica, do nothing |
-| `figures/pareto_frontier.png` | Cost vs latency penalty tradeoff (Pareto frontier) |
-| `figures/ppo_scaling_vs_ground_truth.png` | PPO active replicas vs ideal replicas over one episode |
-| `figures/dqn_scaling_vs_ground_truth.png` | DQN active replicas vs ideal replicas over one episode |
-| `figures/scaling_vs_ground_truth_combined.png` | PPO, DQN, Greedy vs ground truth overlaid (same episode) |
-| `figures/ppo_training_metrics.png` | PPO curves from `mlflow.db` (`autoscaler-ppo` experiment) |
-| `figures/dqn_training_metrics.png` | DQN curves from `mlflow.db` (`autoscaler-dqn` experiment) |
+| `policy_comparison.png` | Mean episode return: PPO, DQN, greedy, target util, fixed replica, do nothing |
+| `pareto_frontier.png` | Cost vs latency penalty tradeoff |
+| `return_vs_penalties_scatter.png` | Return vs cost/latency penalties |
+
+### `figures/training/`
+
+| File | Description |
+|------|-------------|
+| `ppo_training_metrics.png` | PPO MLflow curves (`autoscaler-ppo`, 100 iter preferred) |
+| `dqn_training_metrics.png` | DQN MLflow curves (`autoscaler-dqn`) |
+| `training_curves_overlay.png` | PPO vs DQN `episode_return_mean` |
+
+### `figures/scaling/`
+
+| File | Description |
+|------|-------------|
+| `ppo_scaling_vs_ground_truth.png` | PPO replicas vs ideal |
+| `dqn_scaling_vs_ground_truth.png` | DQN replicas vs ideal |
+| `scaling_vs_ground_truth_combined.png` | PPO, DQN, greedy overlaid |
+| `scaling_vs_ground_truth_faceted.png` | Faceted scaling (optional `--faceted`) |
+
+### `figures/baselines/`
+
+| File | Description |
+|------|-------------|
+| `fixed_replica_sweep.png` | Fixed replica Pareto sweep |
+| `reward_components_greedy.png` | Per-step greedy reward breakdown |
+
+## Data
+
+| File | Description |
+|------|-------------|
 | `benchmark_summary.json` | Numeric summary for reports |
+| `experiments/` | Backlog experiment JSON outputs |
 
 ## Policies
 
-- **PPO** — `checkpoints/ppo/final` Ray RLlib checkpoint (fallback: `checkpoints/final`)
-- **DQN** — `checkpoints/dqn/final` Ray RLlib checkpoint
-- **Greedy** — knows next-step RPS, scales toward needed capacity (not deployable)
+- **PPO** — `checkpoints/ppo/final` (fallback: `checkpoints/final`)
+- **DQN** — `checkpoints/dqn/final`
+- **Greedy** — perfect next-step RPS heuristic (not deployable)
 - **Fixed replica** — 4 replicas, always hold
 - **Do nothing** — 1 replica, always hold
 
-**Ground truth** (scaling plot): `ideal_replicas = ceil(RPS / throughput_per_replica)` at each step — instant capacity for current traffic, no cold-start.
+**Ground truth** (scaling plots): `ideal_replicas = ceil(RPS / throughput_per_replica)` at each step.

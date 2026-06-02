@@ -25,6 +25,12 @@ from rl_inference_autoscaler.evaluation import run_benchmark_suite
 
 RESULTS_DIR = _REPO / "results"
 FIGURES_DIR = RESULTS_DIR / "figures"
+FIG_BENCHMARK = FIGURES_DIR / "benchmark"
+FIG_TRAINING = FIGURES_DIR / "training"
+FIG_SCALING = FIGURES_DIR / "scaling"
+FIG_BASELINES = FIGURES_DIR / "baselines"
+
+FIGURE_SUBDIRS = (FIG_BENCHMARK, FIG_TRAINING, FIG_SCALING, FIG_BASELINES)
 
 POLICY_LABELS = {
     "ppo": "PPO (trained)",
@@ -100,7 +106,7 @@ def _plot_policy_comparison(benchmark: dict) -> None:
         color="#444",
     )
     fig.tight_layout()
-    out = FIGURES_DIR / "policy_comparison.png"
+    out = FIG_BENCHMARK / "policy_comparison.png"
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"Wrote {out}")
@@ -174,7 +180,7 @@ def _plot_pareto_frontier(benchmark: dict) -> None:
     ax.legend(loc="upper right", fontsize=8)
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
-    out = FIGURES_DIR / "pareto_frontier.png"
+    out = FIG_BENCHMARK / "pareto_frontier.png"
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"Wrote {out}")
@@ -225,7 +231,7 @@ def _plot_scaling_vs_ground_truth(
     axes[1].grid(True, alpha=0.3)
 
     fig.tight_layout()
-    out = FIGURES_DIR / outfile
+    out = FIG_SCALING / outfile
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"Wrote {out}")
@@ -325,7 +331,7 @@ def _plot_combined_scaling_vs_ground_truth(benchmark: dict) -> None:
         color="#555",
     )
     fig.subplots_adjust(left=0.08, right=0.92, top=0.94, bottom=0.08, hspace=0.12)
-    out = FIGURES_DIR / "scaling_vs_ground_truth_combined.png"
+    out = FIG_SCALING / "scaling_vs_ground_truth_combined.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"Wrote {out}")
@@ -378,7 +384,7 @@ def _plot_training_metrics(
 
     axes[1].set_xlabel("Training iteration")
     fig.tight_layout()
-    out = FIGURES_DIR / outfile
+    out = FIG_TRAINING / outfile
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"Wrote {out}")
@@ -423,7 +429,7 @@ def _plot_reward_components(benchmark: dict) -> None:
     ax.set_title("Greedy policy — reward components (episode 0)")
     ax.legend(loc="upper right")
     fig.tight_layout()
-    out = FIGURES_DIR / "reward_components_greedy.png"
+    out = FIG_BASELINES / "reward_components_greedy.png"
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"Wrote {out}")
@@ -448,7 +454,7 @@ def _plot_training_overlay(mlflow_ppo: dict, mlflow_dqn: dict) -> None:
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
-    out = FIGURES_DIR / "training_curves_overlay.png"
+    out = FIG_TRAINING / "training_curves_overlay.png"
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"Wrote {out}")
@@ -480,7 +486,7 @@ def _plot_b6_scatter(benchmark: dict) -> None:
     for i, n in enumerate(names):
         axes[0].annotate(n, (costs[i], rets[i]), fontsize=7, xytext=(4, 4), textcoords="offset points")
     fig.tight_layout()
-    out = FIGURES_DIR / "return_vs_penalties_scatter.png"
+    out = FIG_BENCHMARK / "return_vs_penalties_scatter.png"
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"Wrote {out}")
@@ -514,7 +520,7 @@ def _plot_faceted_scaling(benchmark: dict, trajectory_episodes: list[int]) -> No
     axes[-1].set_xlabel("Timestep")
     fig.suptitle("Faceted scaling vs ground truth", y=1.01)
     fig.tight_layout()
-    out = FIGURES_DIR / "scaling_vs_ground_truth_faceted.png"
+    out = FIG_SCALING / "scaling_vs_ground_truth_faceted.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"Wrote {out}")
@@ -536,7 +542,7 @@ def _plot_fixed_replica_sweep(sweep: dict) -> None:
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
-    out = FIGURES_DIR / "fixed_replica_sweep.png"
+    out = FIG_BASELINES / "fixed_replica_sweep.png"
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"Wrote {out}")
@@ -552,6 +558,8 @@ def main() -> None:
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    for sub in FIGURE_SUBDIRS:
+        sub.mkdir(parents=True, exist_ok=True)
     traj_eps = [int(x) for x in args.trajectory_episodes.split(",") if x.strip()]
 
     print("Running benchmark rollouts...")
