@@ -74,6 +74,25 @@ class TrafficGenerator:
             return float(self._csv_rps[0])
         return float(initial_rps if initial_rps is not None else rng.uniform(10.0, 50.0))
 
+    def _sample_synthetic(self, rng: np.random.Generator, current_rps: float) -> float:
+        spike = rng.choice(
+            [0.0, self.spike_magnitude],
+            p=[1.0 - self.spike_probability, self.spike_probability],
+        )
+        noise = rng.normal(0.0, self.noise_std)
+        return float(np.clip(current_rps + noise + spike, 0.0, self.max_rps))
+
+    def peek_next_rps(self, rng: np.random.Generator, current_rps: float) -> float:
+        """Next RPS without advancing the CSV index (oracle / planning)."""
+        if self._resolved_mode == "csv" and self._csv_rps is not None:
+            idx = min(self._csv_index, len(self._csv_rps) - 1)
+            return float(self._csv_rps[idx])
+        state = rng.bit_generator.state
+        try:
+            return self._sample_synthetic(rng, current_rps)
+        finally:
+            rng.bit_generator.state = state
+
     def next_rps(self, rng: np.random.Generator, current_rps: float) -> float:
         """Advance one timestep and return new RPS."""
         if self._resolved_mode == "csv" and self._csv_rps is not None:
@@ -81,10 +100,4 @@ class TrafficGenerator:
             rps = float(self._csv_rps[idx])
             self._csv_index += 1
             return rps
-
-        spike = rng.choice(
-            [0.0, self.spike_magnitude],
-            p=[1.0 - self.spike_probability, self.spike_probability],
-        )
-        noise = rng.normal(0.0, self.noise_std)
-        return float(np.clip(current_rps + noise + spike, 0.0, self.max_rps))
+        return self._sample_synthetic(rng, current_rps)

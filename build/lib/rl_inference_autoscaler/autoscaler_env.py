@@ -37,6 +37,7 @@ class AutoscalerEnv(gym.Env):
         self.cold_start_steps = int(cfg.get("cold_start_steps", 3))
         self.max_queue = float(cfg.get("max_queue", 500.0))
         self.max_steps_per_episode = int(cfg.get("max_steps_per_episode", 200))
+        self.initial_replicas = float(cfg.get("initial_replicas", 1.0))
 
         traffic_mode: TrafficMode = cfg.get("traffic_mode", "auto")
         csv_path = cfg.get("traffic_csv_path")
@@ -72,7 +73,9 @@ class AutoscalerEnv(gym.Env):
             self._rng = np.random.default_rng(seed)
 
         self.current_step = 0
-        self._active_replicas = 1.0
+        self._active_replicas = float(
+            np.clip(self.initial_replicas, 1.0, float(self.max_replicas))
+        )
         self._pending_boots = []
         self._queue_depth = 0.0
 

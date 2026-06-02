@@ -27,10 +27,12 @@ Phase 2 trains a **PPO** policy on `AutoscalerEnv` using **Ray RLlib**, with opt
 
 | Module | Role |
 |--------|------|
-| `train_config.py` | Shared `TrainingSettings` + `PPOConfig` (256×256 MLP, clip ε=0.2) |
-| `train_ray.py` | `ray.init()`, `config.build()`, `algo.train()`, checkpoints, MLflow |
-| `modal_train.py` | **Only** Modal `App`, image, volume, `train_on_modal.remote` |
-| `train.py` | Thin local CLI → `train_ray.main()` |
+| `train_config.py` | Shared `TrainingSettings` / `DQNSettings`, `build_ppo_config`, `build_dqn_config` |
+| `train_common.py` | Shared Ray init, MLflow setup, metric extraction |
+| `train_ray.py` | `ray.init()`, PPO `algo.train()`, checkpoints, MLflow |
+| `train_dqn_ray.py` | Same for DQN |
+| `modal_train.py` | **Only** Modal `App`, image, volume, `train_on_modal(algorithm=...)` |
+| `train.py` / `train_dqn.py` | Thin local CLIs |
 
 ## 2. Data During Training
 
@@ -161,7 +163,7 @@ uv run pytest -v
 | Test file | What it verifies |
 |-----------|------------------|
 | `tests/test_autoscaler_env.py` | Cold start, queue, CSV/synthetic traffic, baselines |
-| `tests/test_train_infra.py` | Gym registration, PPO config build, Ray dry-run, Modal module shape |
+| `tests/test_train_infra.py` | Gym registration, PPO/DQN config build, Ray dry-run, Modal module shape |
 
 Ray training tests use `--dry-run` / `validate_ppo_config()` so CI does not need GPUs or long runs.
 
@@ -188,7 +190,64 @@ After training, evaluate the checkpoint with RLlib’s eval API or a custom roll
 
 Same `run_training()` implements both paths.
 
-## 8. Next: Phase 3
+## 8. DQN Training
+
+DQN mirrors the PPO stack with parallel modules. **Note:** DQN uses RLlib's **new API stack** (episode replay buffer); PPO remains on the old stack. Ray 2.54+ rejects the old-stack DQN replay buffer combo.
+
+| Module | Role |
+|--------|------|
+| `train_config.py` | `DQNSettings` + `build_dqn_config()` |
+| `train_common.py` | Shared Ray init, MLflow, metric extraction |
+| `train_dqn_ray.py` | `run_dqn_training()`, local CLI |
+| `train_dqn.py` | Thin local CLI wrapper |
+| `modal_train.py` | `--algorithm dqn` → `run_dqn_training()` |
+
+### Local DQN
+
+```bash
+uv sync --extra train --no-editable
+uv run --extra train python train_dqn.py --dry-run
+uv run --extra train python train_dqn.py --iterations 50 --num-env-runners 4
+uv run --extra train python train_dqn.py --local --iterations 10
+uv run --extra train python train_dqn.py --mlflow-tracking-uri sqlite:///mlflow.db
+```
+
+Checkpoints: `checkpoints/dqn/final/`
+
+### Modal DQN
+
+```bash
+uv run modal run src/rl_inference_autoscaler/modal_train.py --no-dry-run --algorithm dqn --iterations 100
+modal volume get autoscaler-rl-checkpoints dqn/final ./checkpoints/dqn/from_modal
+```
+
+### DQN hyperparameters (defaults in `DQNSettings`)
+
+| Parameter | Default |
+|-----------|---------|
+| `num_env_runners` | 4 (8 on Modal) |
+| `train_batch_size` | 32 |
+| `lr` | 5e-4 |
+| `gamma` | 0.99 |
+| `replay_buffer_capacity` | 50_000 |
+| `learning_starts` | 1_000 |
+| `target_update_freq` | 500 |
+| `double_q` / `dueling` | True / True |
+| Q-network MLP | `[256, 256]` ReLU |
+
+MLflow experiment: `autoscaler-dqn`. Logged metrics: `episode_return_mean`, `episode_len_mean`, `td_error`, `num_env_steps_sampled`, `exploration_epsilon`.
+
+### Results plots
+
+After training PPO and/or DQN, regenerate comparison plots:
+
+```bash
+.venv/bin/python scripts/generate_results_plots.py
+```
+
+Produces `results/figures/dqn_training_metrics.png`, `dqn_scaling_vs_ground_truth.png`, and includes DQN in policy comparison / Pareto plots when a checkpoint exists.
+
+## 9. Next: Phase 3
 
 1. Load checkpoint via `Algorithm.from_checkpoint` / `get_module()`  
 2. Ray Serve + FastAPI: metrics in → scale action out  

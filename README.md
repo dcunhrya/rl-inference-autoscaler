@@ -9,12 +9,15 @@ src/rl_inference_autoscaler/
   autoscaler_env.py   # Phase 1 MDP simulator
   traffic.py          # Synthetic + CSV request-rate data
   baselines.py        # Heuristic policy for comparison
-  train_config.py     # Shared PPO / RLlib settings
-  train_ray.py        # Ray training (local or Modal worker)
-  modal_train.py      # Modal App only — keep separate from train_ray
+  train_config.py     # Shared PPO / DQN RLlib settings
+  train_common.py     # Shared Ray init, MLflow, metrics
+  train_ray.py        # PPO training (local or Modal worker)
+  train_dqn_ray.py    # DQN training (local or Modal worker)
+  modal_train.py      # Modal App — keep separate from train_ray
 data/
   traffic_trace.csv   # Optional reproducible RPS trace
-train.py              # Thin CLI for local Ray training
+train.py              # Thin CLI for local PPO training
+train_dqn.py          # Thin CLI for local DQN training
 project_info/
   project_goal.md
   phase1.md
@@ -70,7 +73,18 @@ If you see `ModuleNotFoundError: No module named 'rl_inference_autoscaler'`, run
 
 If you see `ModuleNotFoundError: No module named 'ray'` in `(raylet)` logs, Ray packaged the project without train deps — use `--extra train` or `.venv/bin/python train.py` after `uv sync --extra train --no-editable`.
 
-Checkpoints: `checkpoints/final/`
+Checkpoints: `checkpoints/ppo/final/` (legacy fallback: `checkpoints/final/`)
+
+### Local Ray (RLlib DQN)
+
+```bash
+uv run --extra train python train_dqn.py --dry-run
+uv run --extra train python train_dqn.py --iterations 50 --num-env-runners 4
+uv run --extra train python train_dqn.py --local --iterations 10
+uv run --extra train python train_dqn.py --mlflow-tracking-uri sqlite:///mlflow.db
+```
+
+Checkpoints: `checkpoints/dqn/final/`
 
 ### Modal (when you choose to run)
 
@@ -82,6 +96,8 @@ modal setup
 uv run modal run src/rl_inference_autoscaler/modal_train.py
 # actual job:
 uv run modal run src/rl_inference_autoscaler/modal_train.py --no-dry-run --iterations 100
+# DQN on Modal:
+uv run modal run src/rl_inference_autoscaler/modal_train.py --no-dry-run --algorithm dqn --iterations 100
 ```
 
 Full walkthrough: [project_info/phase2.md](project_info/phase2.md).
@@ -92,6 +108,15 @@ Full walkthrough: [project_info/phase2.md](project_info/phase2.md).
 - Ray Serve + FastAPI endpoint for live metrics → scaling action
 
 See [project_info/project_goal.md](project_info/project_goal.md).
+
+## Results plots
+
+```bash
+uv sync --extra train --no-editable
+.venv/bin/python scripts/generate_results_plots.py
+```
+
+Outputs: `results/figures/policy_comparison.png`, `pareto_frontier.png`, `ppo_scaling_vs_ground_truth.png`, `dqn_scaling_vs_ground_truth.png`, `ppo_training_metrics.png`, `dqn_training_metrics.png`, `results/benchmark_summary.json`.
 
 ## Development
 

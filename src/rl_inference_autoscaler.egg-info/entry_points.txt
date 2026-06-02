@@ -1,2 +1,3 @@
 [console_scripts]
+train-dqn = rl_inference_autoscaler.train_dqn_ray:main
 train-ray = rl_inference_autoscaler.train_ray:main

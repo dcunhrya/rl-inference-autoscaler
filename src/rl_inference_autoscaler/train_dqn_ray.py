@@ -1,4 +1,4 @@
-"""Ray RLlib PPO training entrypoint (local or inside Modal worker)."""
+"""Ray RLlib DQN training entrypoint (local or inside Modal worker)."""
 
 from __future__ import annotations
 
@@ -9,42 +9,42 @@ from typing import Any
 
 from rl_inference_autoscaler import register_env
 from rl_inference_autoscaler.train_common import (
-    extract_ppo_metrics,
+    dqn_mlflow_params,
+    extract_dqn_metrics,
     finish_mlflow_run,
     init_ray_local,
     log_metrics,
-    ppo_mlflow_params,
     setup_mlflow,
     should_stop_training,
 )
-from rl_inference_autoscaler.train_config import TrainingSettings, build_ppo_config
+from rl_inference_autoscaler.train_config import DQNSettings, build_dqn_config
 
 logger = logging.getLogger(__name__)
 
 
-def run_training(
-    settings: TrainingSettings | None = None,
+def run_dqn_training(
+    settings: DQNSettings | None = None,
     *,
     init_ray: bool = True,
     shutdown_ray: bool = True,
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """
-    Run PPO training with Ray RLlib.
+    Run DQN training with Ray RLlib.
 
     Parameters
     ----------
     dry_run:
         If True, only build config and return metadata (no ``algo.train()``).
     """
-    settings = settings or TrainingSettings()
+    settings = settings or DQNSettings()
     register_env()
 
     if dry_run:
-        _config, checkpoint_path = build_ppo_config(settings)
+        _config, checkpoint_path = build_dqn_config(settings)
         return {
             "dry_run": True,
-            "algorithm": "PPO",
+            "algorithm": "DQN",
             "checkpoint_dir": str(checkpoint_path),
             "config_built": True,
         }
@@ -54,15 +54,15 @@ def run_training(
     if init_ray:
         init_ray_local()
 
-    config, checkpoint_path = build_ppo_config(settings)
+    config, checkpoint_path = build_dqn_config(settings)
     algo = config.build_algo()
-    mlflow = setup_mlflow(settings, ppo_mlflow_params(settings))
+    mlflow = setup_mlflow(settings, dqn_mlflow_params(settings))
     last_result: dict[str, Any] = {}
 
     try:
         for i in range(settings.num_iterations):
             last_result = algo.train()
-            log_metrics(mlflow, extract_ppo_metrics(last_result, i), i)
+            log_metrics(mlflow, extract_dqn_metrics(last_result, i), i)
             if should_stop_training(last_result, settings.stop_reward_mean):
                 logger.info(
                     "stop: episode_return_mean >= %s", settings.stop_reward_mean
@@ -71,7 +71,7 @@ def run_training(
 
         checkpoint = algo.save(str(checkpoint_path / "final"))
         summary = {
-            "algorithm": "PPO",
+            "algorithm": "DQN",
             "checkpoint": str(checkpoint),
             "checkpoint_dir": str(checkpoint_path),
             "iterations": settings.num_iterations,
@@ -86,16 +86,16 @@ def run_training(
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train autoscaler PPO with Ray RLlib")
+    parser = argparse.ArgumentParser(description="Train autoscaler DQN with Ray RLlib")
     parser.add_argument("--iterations", type=int, default=50)
     parser.add_argument("--num-env-runners", type=int, default=4)
-    parser.add_argument("--checkpoint-dir", type=str, default="checkpoints/ppo")
-    parser.add_argument("--experiment-name", type=str, default="autoscaler-ppo")
+    parser.add_argument("--checkpoint-dir", type=str, default="checkpoints/dqn")
+    parser.add_argument("--experiment-name", type=str, default="autoscaler-dqn")
     parser.add_argument(
         "--mlflow-tracking-uri",
         type=str,
         default=None,
-        help="e.g. file:./mlruns or http://localhost:5000",
+        help="e.g. file:./mlruns or sqlite:///mlflow.db",
     )
     parser.add_argument(
         "--dry-run",
@@ -119,7 +119,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = _parse_args()
     num_env_runners = 0 if args.local else args.num_env_runners
-    settings = TrainingSettings(
+    settings = DQNSettings(
         num_iterations=args.iterations,
         num_env_runners=num_env_runners,
         checkpoint_dir=args.checkpoint_dir,
@@ -127,7 +127,7 @@ def main() -> None:
         mlflow_tracking_uri=args.mlflow_tracking_uri,
         env_config={"traffic_mode": args.traffic_mode},
     )
-    summary = run_training(settings, dry_run=args.dry_run)
+    summary = run_dqn_training(settings, dry_run=args.dry_run)
     print(json.dumps(summary, indent=2))
 
 
