@@ -39,8 +39,20 @@ npm run preview
 - React interactives: `src/components/react/`
 - Entry page: `src/pages/index.astro`
 
-## Deploy
+## Deploy (GitHub Pages)
 
-Pushes to `main` that touch `website/` or `results/` trigger [`.github/workflows/deploy-website.yml`](../.github/workflows/deploy-website.yml).
+**Live URL:** [https://dcunhrya.github.io/rl-inference-autoscaler/](https://dcunhrya.github.io/rl-inference-autoscaler/)
 
-One-time: **Settings → Pages → Source: GitHub Actions**.
+1. **One-time (repo admin):** GitHub → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. Pushes to `main` that touch `website/`, `results/`, or the workflow file run [`.github/workflows/deploy-website.yml`](../.github/workflows/deploy-website.yml).
+3. Or trigger manually: **Actions → Deploy website to GitHub Pages → Run workflow**.
+
+The workflow sets `SITE_URL` and `BASE_PATH=/rl-inference-autoscaler/` for Astro. `public/.nojekyll` ensures GitHub Pages serves Astro’s `_astro/` assets (Jekyll would ignore them otherwise).
+
+Local production check:
+
+```bash
+cd website
+SITE_URL=https://dcunhrya.github.io BASE_PATH=/rl-inference-autoscaler/ npm run build
+npm run preview -- --base /rl-inference-autoscaler/
+```
