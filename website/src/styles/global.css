@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-cream text-ink antialiased;
+  }
+}
+
+@layer components {
+  .prose-blog {
+    @apply prose prose-stone max-w-none;
+    @apply prose-headings:text-ink prose-headings:scroll-mt-24;
+    @apply prose-a:text-accent prose-a:no-underline hover:prose-a:underline;
+    @apply prose-code:text-accent prose-code:bg-cream-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded;
+    @apply prose-pre:bg-cream-card prose-pre:border prose-pre:border-border;
+    @apply prose-strong:text-ink;
+    @apply prose-li:text-ink-muted;
+    @apply prose-p:text-ink-muted;
+    @apply prose-th:text-ink prose-td:text-ink-muted;
+  }
+
+  .chart-card {
+    @apply rounded-xl border border-border bg-cream-card p-4 my-6 shadow-sm;
+  }
+}

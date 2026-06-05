@@ -1,0 +1,34 @@
+---
+title: The Algorithmic Problem
+order: 2
+---
+
+## The Algorithmic Problem
+
+Inference autoscaling is a **sequential decision problem** under uncertainty. At each timestep you observe traffic and cluster state, choose whether to add, hold, or remove capacity, and pay for that choice over the next interval.
+
+### Cost vs Latency
+
+Every policy sits somewhere on a **Pareto frontier** between:
+
+- **Cost** — proportional to active replicas (GPUs, pods, or nodes)
+- **Latency** — overload when arrival rate exceeds capacity, plus queue backlog and dropped work
+
+Policies that minimize cost alone leave the cluster under-provisioned during spikes. Policies that chase minimum latency over-provision and waste budget.
+
+<ParetoExplorer />
+
+### Why simple baselines struggle
+
+| Baseline | Behavior | Failure Mode |
+|----------|----------|-------------------------------|
+| **Do nothing** | Never scales | Catastrophic overload; worst latency |
+| **Fixed replicas** | Constant capacity | Can't follow spikes or troughs |
+| **Target utilization (HPA-style)** | React to utilization | Lag behind bursts and oscillates |
+| **Greedy** | Scale from next-step demand | Ignores cold start; poor on replay |
+
+This benchmark on a **200-step GPU-style traffic trace** shows orders-of-magnitude gaps in episode return between RL policies and static baselines along with a surprising gap between **greedy** and **learned** policies once boot delay and queueing matter.
+
+<Callout type="tip" title="Related reading">
+  For GPU efficiency, see [**An Interactive Guide to GPU Utilization**](https://dcunhrya.github.io/gpu-utilization-blog/). This article focuses on **serving capacity** after models are deployed.
+</Callout>

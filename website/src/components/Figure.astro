@@ -1,0 +1,25 @@
+---
+export interface Props {
+  src: string;
+  alt: string;
+  caption?: string;
+  /** Bust browser cache when the underlying PNG changes (e.g. version="2"). */
+  version?: string;
+}
+
+const { src, alt, caption, version } = Astro.props;
+const base = `${import.meta.env.BASE_URL}${src.replace(/^\//, '')}`;
+const url = version ? `${base}?v=${version}` : base;
+---
+
+<figure class="not-prose my-6">
+  <img
+    src={url}
+    alt={alt}
+    class="rounded-lg border border-border w-full bg-white shadow-sm"
+    loading="lazy"
+  />
+  {caption ? (
+    <figcaption class="text-sm text-ink-light mt-2 text-center">{caption}</figcaption>
+  ) : null}
+</figure>

@@ -1,0 +1,59 @@
+---
+title: Analysis
+order: 6
+---
+
+import Figure from '../../components/Figure.astro';
+
+## Analysis
+
+### Why PPO beats greedy on return
+
+Greedy minimizes **instantaneous** mismatch between RPS and capacity but does not account for **cold-start delay**: scaling up today does not add throughput for several timesteps. On the CSV replay, greedy accumulates a **large latency penalty** (17,468 mean) despite low replica cost (98).
+
+PPO and DQN learn to **anticipate** bursts from state features (RPS, utilization, delta) and accept higher replica cost during volatile windows—reducing overload without a perfect oracle.
+
+### Ground-truth gap (oracle replicas)
+
+Scaling plots compare **active replicas** to an **ideal** count derived from instantaneous RPS (no boot delay). Symmetric \|ΔN\| alone is misleading: **underprovisioning** (ideal > active) drives SLO risk; **overprovisioning** (active > ideal) mainly adds cost. On episode 0 (seed 42), mean gaps:
+
+| Policy | Under (SLO risk) | Over (extra cost) |
+|--------|------------------|-------------------|
+| Greedy | 1.12 | 0.58 |
+| PPO | 0.05 | 9.56 |
+| DQN | 0.08 | 7.78 |
+
+Greedy stays near ideal in replica space yet still loses on **return** because cold-start delay means matching ideal count is not enough to clear overload immediately.
+
+<ScalingTimeline />
+
+<Figure
+  src="figures/scaling/scaling_vs_ground_truth_combined.png"
+  alt="Active vs ideal replicas for PPO, DQN, and greedy"
+  caption="Traffic (shaded spikes) and active GPU replicas vs ideal policy on one episode (seed 42)."
+/>
+
+### Why PPO overprovisions but DQN tracks ideal more closely
+
+On the scaling figure, **PPO** (blue) often sits at **max replicas** after bursts and is slow to scale down (“delayed scale-down”), while **DQN** (purple) follows the black **ideal** line more closely—similar in spirit to **Greedy** (green), but with less underprovisioning at spikes.
+
+This is not a training failure; the two algorithms learn **different points on the same reward tradeoff**:
+
+1. **PPO minimizes latency first.** With `latency_beta` much larger than replica cost (`cost_alpha`), PPO learns that **missing capacity during cold-start** is expensive. It scales up aggressively (122 scale-up vs 47 scale-down actions on this episode) and **holds high replica counts** through quiet periods so it never re-enters overload when traffic returns. That shows up as **mean over ≈ 9.6** and **mean under ≈ 0.05**—almost no SLO risk, lots of extra GPUs.
+
+2. **DQN scales down more often.** On the same trace, DQN takes **84 scale-down** steps vs PPO’s 47, so it **releases capacity sooner** when utilization falls. Replica counts stay closer to ideal (**mean over ≈ 7.8**, **mean under ≈ 0.08**), which looks better against ground truth but leaves slightly more headroom for queue buildup (**latency 639** vs PPO’s **393**).
+
+3. **On-policy vs off-policy dynamics.** PPO updates from the policy it just ran; once “scale up early, scale down late” works, the clipped objective **reinforces** that safe-but-expensive behavior. DQN’s replay and Q-learning spread credit across many past states, which tends to produce a **less extreme** replica level—closer to greedy in shape, but still with enough proactive scale-up to beat greedy on return.
+
+**Takeaway:** PPO wins **episode return** (−692 vs −902) by paying for **reliability** (low underprovisioning). DQN wins **visual fit to ideal** by accepting a bit more SLO risk and less idle capacity. Neither metric alone tells the full story; compare return, latency/cost penalties, and asymmetric under/over gaps together.
+
+### PPO vs DQN (returns)
+
+- **PPO** (−692 return): better balance on this trace; higher cost (299) but much lower latency (393).
+- **DQN** (−902 return): slightly cheaper replicas (263) but more latency (639)—a different point on the cost–latency frontier.
+
+For deployment, PPO is the stronger default from these benchmarks; DQN remains useful as an off-policy baseline and for ablations (learning rate, replay, etc.).
+
+<Callout type="warning" title="Simulation ≠ production">
+  Results are from a simulator with simplified dynamics. Phase 3 plans Ray Serve deployment and shadow evaluation against live metrics before any production recommendation.
+</Callout>

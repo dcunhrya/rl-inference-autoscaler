@@ -1,0 +1,52 @@
+---
+import { getCollection, render } from 'astro:content';
+import BlogLayout from '../layouts/BlogLayout.astro';
+import BlogHeader from '../components/BlogHeader.astro';
+import Callout from '../components/Callout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import PolicyComparisonChart from '../components/PolicyComparisonChart.astro';
+import ParetoExplorer from '../components/ParetoExplorer.astro';
+import ScalingTimeline from '../components/ScalingTimeline.astro';
+import RewardTradeoff from '../components/RewardTradeoff.astro';
+import Figure from '../components/Figure.astro';
+
+const rawSections = await getCollection('sections');
+const sections = [...rawSections].sort((a, b) => {
+  const orderA = a.data.order ?? Number.MAX_SAFE_INTEGER;
+  const orderB = b.data.order ?? Number.MAX_SAFE_INTEGER;
+  if (orderA !== orderB) return orderA - orderB;
+  return a.id.localeCompare(b.id);
+});
+
+const tocItems = sections.map((entry) => ({
+  id: entry.id,
+  title: entry.data.title,
+}));
+
+const mdxComponents = {
+  Callout,
+  CodeBlock,
+  PolicyComparisonChart,
+  ParetoExplorer,
+  ScalingTimeline,
+  RewardTradeoff,
+  BlogHeader,
+  Figure,
+};
+
+const renderedSections = await Promise.all(
+  sections.map(async (entry) => {
+    const { Content } = await render(entry);
+    return { id: entry.id, Content };
+  }),
+);
+
+---
+
+<BlogLayout sections={tocItems}>
+  {renderedSections.map(({ id, Content }) => (
+    <section id={id} class="mb-16 scroll-mt-24">
+      <Content components={mdxComponents} />
+    </section>
+  ))}
+</BlogLayout>

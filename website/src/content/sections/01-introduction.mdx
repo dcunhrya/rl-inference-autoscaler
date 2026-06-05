@@ -1,0 +1,34 @@
+---
+title: Introduction
+order: 1
+---
+
+import BlogHeader from '../../components/BlogHeader.astro';
+
+<BlogHeader
+  title="Autoscaling GPU ML Inference with Reinforcement Learning"
+  authors={[{ name: "Ryan D'Cunha", affiliation: 'Stanford University' }]}
+  publishedDate="June 2026"
+/>
+
+## Introduction
+
+Serving large language models and other ML workloads at scale means paying for **GPU replicas** that must track **unpredictable traffic**. Kubernetes Horizontal Pod Autoscaler (HPA) reacts to average CPU or custom metrics with fixed rules. That works for steady load, but inference spikes (batch jobs, product launches, diurnal patterns) often arrive faster than cold-start delays allow.
+
+When replicas lag behind demand, requests can queue, latency can spikes, and SLOs can break. When you over-provision, GPUs sit idle and cloud bills climb (which nowdays costs a fortune). The trade-off is inherently **multi-objective**: minimize cost **and** minimize latency under uncertainty.
+
+My investigation focuses on the following question: can a **reinforcement learning** policy learn to scale inference replicas proactively from cluster metrics, outperforming classical heuristics in a realistic simulator?
+
+I built a **Gymnasium** environment that models request rate, utilization, replica count, cold starts, and queueing; trained **PPO** and **DQN** policies with **Ray RLlib**; and benchmarked them against baselines on a GPU-style synthetic traffic trace.
+
+<Callout type="note" title="Who this is for">
+  ML engineers and researchers interested in **RL for systems**, **Ray**, or **autoscaler design**. Basic familiarity with MDPs and RL helps for understaing algorithms!
+</Callout>
+
+**What you'll find in this article:**
+
+1. Why static scaling fails on inference traffic
+2. How to formulate scaling as an MDP with cost–latency rewards
+3. Benchmark results and interactive analysis
+
+This [repository](https://github.com/dcunhrya/rl-inference-autoscaler) contains all simulator, training, and evaluation code.

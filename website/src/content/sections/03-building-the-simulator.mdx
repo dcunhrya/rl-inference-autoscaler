@@ -1,0 +1,48 @@
+---
+title: Building the Simulator
+order: 3
+---
+
+## Building the Simulator
+
+In order to evaluate RL policies, a custom **Gymnasium** environment (`AutoscalerEnv`) that stands in for a Kubernetes-style inference fleet was needed. Training does not require a live cluster as all rollouts happen in simulation.
+
+### MDP formulation
+
+| Component | Definition |
+|-----------|------------|
+| **State** \(S_t\) | `[λ_t, μ_t, N_t, δ_λ_t]` — RPS, utilization, active replicas, RPS delta |
+| **Action** \(A_t\) | Discrete `{0, 1, 2}` → scale down, hold, scale up (`{-1, 0, +1}`) |
+| **Reward** \(R_t\) | `−(α·N_t + β·(overload + drops + γ·queue_depth))` |
+
+- **α** (`cost_alpha`): penalty per active replica  
+- **β** (`latency_beta`): penalty for overload and dropped requests  
+- **γ** (`queue_penalty_gamma`): extra weight on queue backlog  
+
+Maximum throughput per replica is **μ** (`throughput_per_replica`, default 50 RPS).
+
+### Realism: cold start and queue
+
+Unlike a toy model with instant scale-up:
+
+1. **Cold start** — `+1` enqueues a pod boot for `cold_start_steps` (default 3). Capacity does not increase until ready. Scale-down removes pending boots first, then active replicas (minimum 1).
+2. **Queue** — Arrivals plus backlog are served up to `active_replicas × μ`. Overflow beyond `max_queue` is dropped and penalized.
+
+These dynamics are why a greedy policy with perfect next-step RPS still incurs large latency penalties on high-variance traces.
+
+<RewardTradeoff />
+
+### Environment API
+
+<CodeBlock lang="python" title="Python">
+{`from rl_inference_autoscaler import AutoscalerEnv
+
+env = AutoscalerEnv(config={
+    "cold_start_steps": 3,
+    "traffic_mode": "auto",
+    "max_steps_per_episode": 200,
+})
+obs, info = env.reset(seed=42)
+obs, reward, terminated, truncated, info = env.step(action)  # action in {0, 1, 2}`}
+</CodeBlock>
+

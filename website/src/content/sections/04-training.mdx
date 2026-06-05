@@ -1,0 +1,49 @@
+---
+title: Policy Training
+order: 4
+---
+
+## Policy Training
+
+With the environment and data handled, the next step is to train policies with **Ray RLlib** on parallel `AutoscalerEnv` rollouts. 
+**PPO** (on-policy, stable updates) and **DQN** (off-policy, discrete actions) are compared against classical baselines.
+
+### Architecture
+
+If you are interested in reproducing this yourself, this is the workflow I used with **Ray RLlib** and **MLflow**:
+
+```text
+AutoscalerEnv  ◄── parallel env runners (Ray RLlib)
+       │
+       ▼
+  PPO / DQN learner (2×256 MLP actor–critic)
+       │
+       ├── checkpoints/ppo/final, checkpoints/dqn/final
+       └── MLflow (episode_return_mean, policy entropy)
+```
+
+### Local training
+
+If you want to reproduce from the repo!
+
+<CodeBlock lang="bash" title="Shell">
+{`uv sync --extra train --no-editable
+uv run --extra train python train.py --local --iterations 50
+uv run --extra train python train_dqn.py --local --iterations 50`}
+</CodeBlock>
+
+`--local` runs without separate env-runner processes (useful on a laptop). Checkpoints land under `checkpoints/{ppo,dqn}/final/`.
+
+### Baselines
+
+| Policy | Description |
+|--------|-------------|
+| `do_nothing` | Always hold (action 1) |
+| `fixed_replica` | Fixed replica count (default 4) |
+| `target_utilization` | HPA-style reaction to utilization |
+| `greedy` | Scale from observed RPS (oracle-style) |
+| `ppo` / `dqn` | Trained RLlib checkpoints |
+
+<Callout type="note" title="Modal (optional)">
+  The repo includes Modal wrappers for cloud training (`modal_train.py`). Local CPU training is sufficient for the results shown here, but you may to try out Modal compute (it's easy to use).
+</Callout>

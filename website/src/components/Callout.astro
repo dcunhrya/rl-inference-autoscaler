@@ -1,0 +1,59 @@
+---
+export interface Props {
+  type?: 'tip' | 'note' | 'warning' | 'info';
+  title?: string;
+}
+
+const { type = 'note', title } = Astro.props;
+
+const styles: Record<string, { bg: string; border: string; title: string; icon: string }> = {
+  tip: {
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    title: 'text-emerald-900',
+    icon: '💡',
+  },
+  note: {
+    bg: 'bg-cream-card',
+    border: 'border-border',
+    title: 'text-ink',
+    icon: '📝',
+  },
+  warning: {
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    title: 'text-amber-900',
+    icon: '⚠️',
+  },
+  info: {
+    bg: 'bg-red-50',
+    border: 'border-red-200',
+    title: 'text-accent',
+    icon: 'ℹ️',
+  },
+};
+
+const defaultTitles: Record<string, string> = {
+  tip: 'Tip',
+  note: 'Note',
+  warning: 'Warning',
+  info: 'Info',
+};
+
+const s = styles[type] ?? styles.note;
+const label = title ?? defaultTitles[type];
+---
+
+<div
+  class:list={['rounded-lg border p-4 my-4 not-prose', s.bg, s.border]}
+  role="note"
+  aria-label={label}
+>
+  <p class:list={['font-semibold mb-2 flex items-center gap-2', s.title]}>
+    <span aria-hidden>{s.icon}</span>
+    {label}
+  </p>
+  <div class="text-ink-muted text-sm [&>*:last-child]:mb-0">
+    <slot />
+  </div>
+</div>

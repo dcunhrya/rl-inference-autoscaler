@@ -1,0 +1,48 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import TableOfContents from '../components/react/TableOfContents';
+
+export interface Props {
+  sections: { id: string; title: string }[];
+}
+
+const { sections } = Astro.props;
+---
+
+<BaseLayout>
+  <div class="min-h-screen flex flex-col">
+    <header class="border-b border-border bg-cream/95 backdrop-blur sticky top-0 z-10">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+        <h1 class="text-xl font-semibold text-accent">
+          Autoscaling GPU ML Inference with Reinforcement Learning
+        </h1>
+        <p class="text-sm text-ink-light mt-0.5">Ryan D'Cunha</p>
+      </div>
+    </header>
+
+    <main class="flex-1 flex max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 gap-12">
+      <aside class="hidden lg:block w-56 shrink-0">
+        <div class="sticky top-24">
+          <TableOfContents sections={sections} client:visible />
+        </div>
+      </aside>
+
+      <article class="min-w-0 flex-1 max-w-3xl prose-blog">
+        <slot />
+      </article>
+    </main>
+
+    <footer class="border-t border-border py-8 mt-12 bg-cream-muted/30">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 text-sm text-ink-light">
+        <a
+          href="https://github.com/dcunhrya/rl-inference-autoscaler"
+          class="text-accent hover:text-accent-light hover:underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          View source on GitHub
+        </a>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>

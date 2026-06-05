@@ -1,0 +1,44 @@
+---
+title: Results
+order: 5
+---
+
+import Figure from '../../components/Figure.astro';
+
+## Results
+
+All policies are evaluated across **50 episodes**. Higher episode return is better (less negative).
+
+### Benchmark summary
+
+| Policy | Return (mean) | Cost penalty | Latency penalty |
+|--------|---------------|--------------|-----------------|
+| **PPO** | −692 | 299 | 393 |
+| **DQN** | −902 | 263 | 639 |
+| Greedy | −17,566 | 98 | 17,468 |
+| Target util (HPA) | −9,519 | 171 | 9,348 |
+| Fixed (n=4) | −46,821 | 80 | 46,741 |
+| Do nothing | −82,099 | 20 | 82,079 |
+
+<PolicyComparisonChart />
+
+PPO achieves the **best mean return** among all policies: roughly **25×** better than greedy and **118×** better than do-nothing on this trace. 
+DQN is competitive but trades more latency for lower replica cost.
+
+
+<Figure
+  src="figures/benchmark/pareto_frontier.png"
+  version="2"
+  alt="Pareto frontier of cost vs latency penalties"
+  caption="Cost vs latency Pareto frontier across policies"
+/>
+
+### Training curves
+
+Both algorithms converge within ~50 RLlib iterations:
+
+<Figure
+  src="figures/training/training_curves_overlay.png"
+  alt="PPO and DQN training curves overlay"
+  caption="Episode return during training"
+/>

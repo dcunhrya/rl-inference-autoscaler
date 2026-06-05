@@ -1,0 +1,13 @@
+---
+import BlogHeader from './react/BlogHeader';
+
+export interface Props {
+  title?: string;
+  authors: { name: string; affiliation: string }[];
+  publishedDate: string;
+}
+
+const { title, authors, publishedDate } = Astro.props;
+---
+
+<BlogHeader title={title} authors={authors} publishedDate={publishedDate} client:load />

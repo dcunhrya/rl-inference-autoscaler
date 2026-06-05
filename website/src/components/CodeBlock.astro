@@ -1,0 +1,41 @@
+---
+export interface Props {
+  lang?: string;
+  title?: string;
+}
+
+const { lang = 'text', title } = Astro.props;
+---
+
+<div class="code-block-wrapper not-prose my-4 rounded-lg border border-border overflow-hidden bg-cream-card shadow-sm">
+  <div class="flex items-center justify-between px-4 py-2 border-b border-border bg-cream-muted/60">
+    <span class="text-xs font-mono text-ink-light">{title ?? lang}</span>
+    <button
+      type="button"
+      class="code-copy-btn text-xs text-accent hover:text-accent-light transition-colors"
+      aria-label="Copy code"
+    >
+      Copy
+    </button>
+  </div>
+  <pre class="p-4 overflow-x-auto text-sm"><code class="font-mono text-ink"><slot /></code></pre>
+</div>
+
+<script>
+  document.querySelectorAll('.code-block-wrapper').forEach((wrapper) => {
+    const btn = wrapper.querySelector('.code-copy-btn');
+    const codeEl = wrapper.querySelector('code');
+    if (!btn || !codeEl) return;
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(codeEl.textContent ?? '');
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+        }, 2000);
+      } catch {
+        /* ignore */
+      }
+    });
+  });
+</script>
