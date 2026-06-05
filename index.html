@@ -1,0 +1,307 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="An interactive article on RL-based inference autoscaling: simulator design, Ray RLlib training, and benchmark results."><meta property="og:title" content="Learning to Scale ML Inference with Reinforcement Learning"><meta property="og:description" content="An interactive article on RL-based inference autoscaling: simulator design, Ray RLlib training, and benchmark results."><meta property="og:type" content="article"><meta property="og:image" content="https://dcunhrya.github.io/rl-inference-autoscaler/og-cover.png"><meta name="twitter:card" content="summary_large_image"><link rel="icon" type="image/svg+xml" href="/rl-inference-autoscaler/favicon.svg"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><title>Learning to Scale ML Inference with Reinforcement Learning</title><link rel="stylesheet" href="/rl-inference-autoscaler/_astro/index.B_LzIFCq.css"><script type="module">document.querySelectorAll(".code-block-wrapper").forEach(e=>{const t=e.querySelector(".code-copy-btn"),o=e.querySelector("code");!t||!o||t.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(o.textContent??""),t.textContent="Copied!",setTimeout(()=>{t.textContent="Copy"},2e3)}catch{}})});
+</script></head> <body>  <div class="min-h-screen flex flex-col"> <header class="border-b border-border bg-cream/95 backdrop-blur sticky top-0 z-10"> <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4"> <h1 class="text-xl font-semibold text-accent">
+Autoscaling GPU ML Inference with Reinforcement Learning
+</h1> <p class="text-sm text-ink-light mt-0.5">Ryan D'Cunha</p> </div> </header> <main class="flex-1 flex max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 gap-12"> <aside class="hidden lg:block w-56 shrink-0"> <div class="sticky top-24"> <script>(()=>{var l=(s,i,o)=>{let r=async()=>{await(await s())()},t=typeof i.value=="object"?i.value:void 0,c={rootMargin:t==null?void 0:t.rootMargin},n=new IntersectionObserver(e=>{for(let a of e)if(a.isIntersecting){n.disconnect(),r();break}},c);for(let e of o.children)n.observe(e)};(self.Astro||(self.Astro={})).visible=l;window.dispatchEvent(new Event("astro:visible"));})();</script><astro-island uid="1K5sNe" prefix="r1" component-url="/rl-inference-autoscaler/_astro/TableOfContents.CxfRBQp1.js" component-export="default" renderer-url="/rl-inference-autoscaler/_astro/client.CaOyRcmD.js" props="{&quot;sections&quot;:[1,[[0,{&quot;id&quot;:[0,&quot;01-introduction.mdx&quot;],&quot;title&quot;:[0,&quot;Introduction&quot;]}],[0,{&quot;id&quot;:[0,&quot;02-the-problem.mdx&quot;],&quot;title&quot;:[0,&quot;The Algorithmic Problem&quot;]}],[0,{&quot;id&quot;:[0,&quot;03-building-the-simulator.mdx&quot;],&quot;title&quot;:[0,&quot;Building the Simulator&quot;]}],[0,{&quot;id&quot;:[0,&quot;04-training.mdx&quot;],&quot;title&quot;:[0,&quot;Policy Training&quot;]}],[0,{&quot;id&quot;:[0,&quot;05-results.mdx&quot;],&quot;title&quot;:[0,&quot;Results&quot;]}],[0,{&quot;id&quot;:[0,&quot;06-analysis.mdx&quot;],&quot;title&quot;:[0,&quot;Analysis&quot;]}],[0,{&quot;id&quot;:[0,&quot;07-conclusion.mdx&quot;],&quot;title&quot;:[0,&quot;Conclusion&quot;]}],[0,{&quot;id&quot;:[0,&quot;08-references.mdx&quot;],&quot;title&quot;:[0,&quot;References&quot;]}]]]}" ssr="" client="visible" opts="{&quot;name&quot;:&quot;TableOfContents&quot;,&quot;value&quot;:true}" await-children=""><nav aria-label="Table of contents" class="space-y-1"><h2 class="text-xs font-semibold uppercase tracking-wider text-ink-light mb-3">On this page</h2><ul class="space-y-1"><li><a href="#01-introduction.mdx" class="block text-sm py-1.5 px-2 rounded-md transition-colors text-ink-muted hover:text-accent hover:bg-cream-muted/80">Introduction</a></li><li><a href="#02-the-problem.mdx" class="block text-sm py-1.5 px-2 rounded-md transition-colors text-ink-muted hover:text-accent hover:bg-cream-muted/80">The Algorithmic Problem</a></li><li><a href="#03-building-the-simulator.mdx" class="block text-sm py-1.5 px-2 rounded-md transition-colors text-ink-muted hover:text-accent hover:bg-cream-muted/80">Building the Simulator</a></li><li><a href="#04-training.mdx" class="block text-sm py-1.5 px-2 rounded-md transition-colors text-ink-muted hover:text-accent hover:bg-cream-muted/80">Policy Training</a></li><li><a href="#05-results.mdx" class="block text-sm py-1.5 px-2 rounded-md transition-colors text-ink-muted hover:text-accent hover:bg-cream-muted/80">Results</a></li><li><a href="#06-analysis.mdx" class="block text-sm py-1.5 px-2 rounded-md transition-colors text-ink-muted hover:text-accent hover:bg-cream-muted/80">Analysis</a></li><li><a href="#07-conclusion.mdx" class="block text-sm py-1.5 px-2 rounded-md transition-colors text-ink-muted hover:text-accent hover:bg-cream-muted/80">Conclusion</a></li><li><a href="#08-references.mdx" class="block text-sm py-1.5 px-2 rounded-md transition-colors text-ink-muted hover:text-accent hover:bg-cream-muted/80">References</a></li></ul></nav><!--astro:end--></astro-island> </div> </aside> <article class="min-w-0 flex-1 max-w-3xl prose-blog"> <section id="01-introduction.mdx" class="mb-16 scroll-mt-24"> <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var e=async t=>{await(await t())()};(self.Astro||(self.Astro={})).load=e;window.dispatchEvent(new Event("astro:load"));})();;(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var d=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>m(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>1/0*t},o=t=>{let[l,e]=t;return l in i?i[l](e):void 0},a=t=>t.map(o),m=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([l,e])=>[l,o(e)]));class y extends HTMLElement{constructor(){super(...arguments);d(this,"Component");d(this,"hydrator");d(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},h=this.querySelectorAll("template[data-astro-template]");for(let r of h){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let p;try{p=this.hasAttribute("props")?m(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${s}`,this.getAttribute("props"),r),r}let u;await this.hydrator(this)(this.Component,p,n,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});d(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(`astro:${c}`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[h,{default:p}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),u=this.getAttribute("component-export")||"default";if(!u.includes("."))this.Component=h[u];else{this.Component=h;for(let f of u.split("."))this.Component=this.Component[f]}return this.hydrator=p,this.hydrate},e,this)}catch(n){console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`,n)}}attributeChangedCallback(){this.hydrate()}}d(y,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",y)}})();</script><astro-island uid="ZrPgwj" prefix="r0" component-url="/rl-inference-autoscaler/_astro/BlogHeader.BYxEb12_.js" component-export="default" renderer-url="/rl-inference-autoscaler/_astro/client.CaOyRcmD.js" props="{&quot;title&quot;:[0,&quot;Autoscaling GPU ML Inference with Reinforcement Learning&quot;],&quot;authors&quot;:[1,[[0,{&quot;name&quot;:[0,&quot;Ryan D&#39;Cunha&quot;],&quot;affiliation&quot;:[0,&quot;Stanford University&quot;]}]]],&quot;publishedDate&quot;:[0,&quot;June 2026&quot;]}" ssr="" client="load" opts="{&quot;name&quot;:&quot;BlogHeader&quot;,&quot;value&quot;:true}" await-children=""><header class="mb-10 pb-8 border-b border-border not-prose"><h1 class="text-3xl sm:text-4xl font-bold text-accent leading-tight mb-8">Autoscaling GPU ML Inference with Reinforcement Learning</h1><div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm"><div><p class="text-xs font-semibold uppercase tracking-wider text-ink-light mb-2">Authors</p><ul class="space-y-1"><li class="text-ink font-medium">Ryan D&#x27;Cunha</li></ul></div><div><p class="text-xs font-semibold uppercase tracking-wider text-ink-light mb-2">Affiliations</p><ul class="space-y-1"><li class="text-ink-muted">Stanford University</li></ul></div><div><p class="text-xs font-semibold uppercase tracking-wider text-ink-light mb-2">Published</p><p class="text-ink">June 2026</p></div></div></header><!--astro:end--></astro-island>
+<h2 id="introduction">Introduction</h2>
+<p>Serving large language models and other ML workloads at scale means paying for <strong>GPU replicas</strong> that must track <strong>unpredictable traffic</strong>. Kubernetes Horizontal Pod Autoscaler (HPA) reacts to average CPU or custom metrics with fixed rules. That works for steady load, but inference spikes (batch jobs, product launches, diurnal patterns) often arrive faster than cold-start delays allow.</p>
+<p>When replicas lag behind demand, requests can queue, latency can spikes, and SLOs can break. When you over-provision, GPUs sit idle and cloud bills climb (which nowdays costs a fortune). The trade-off is inherently <strong>multi-objective</strong>: minimize cost <strong>and</strong> minimize latency under uncertainty.</p>
+<p>My investigation focuses on the following question: can a <strong>reinforcement learning</strong> policy learn to scale inference replicas proactively from cluster metrics, outperforming classical heuristics in a realistic simulator?</p>
+<p>I built a <strong>Gymnasium</strong> environment that models request rate, utilization, replica count, cold starts, and queueing; trained <strong>PPO</strong> and <strong>DQN</strong> policies with <strong>Ray RLlib</strong>; and benchmarked them against baselines on a GPU-style synthetic traffic trace.</p>
+<div class="rounded-lg border p-4 my-4 not-prose bg-cream-card border-border" role="note" aria-label="Who this is for"> <p class="font-semibold mb-2 flex items-center gap-2 text-ink"> <span aria-hidden>📝</span> Who this is for </p> <div class="text-ink-muted text-sm [&>*:last-child]:mb-0"> <p>ML engineers and researchers interested in <strong>RL for systems</strong>, <strong>Ray</strong>, or <strong>autoscaler design</strong>. Basic familiarity with MDPs and RL helps for understaing algorithms!</p> </div> </div>
+<p><strong>What you’ll find in this article:</strong></p>
+<ol>
+<li>Why static scaling fails on inference traffic</li>
+<li>How to formulate scaling as an MDP with cost–latency rewards</li>
+<li>Benchmark results and interactive analysis</li>
+</ol>
+<p>This <a href="https://github.com/dcunhrya/rl-inference-autoscaler">repository</a> contains all simulator, training, and evaluation code.</p> </section><section id="02-the-problem.mdx" class="mb-16 scroll-mt-24"> <h2 id="the-algorithmic-problem">The Algorithmic Problem</h2>
+<p>Inference autoscaling is a <strong>sequential decision problem</strong> under uncertainty. At each timestep you observe traffic and cluster state, choose whether to add, hold, or remove capacity, and pay for that choice over the next interval.</p>
+<h3 id="cost-vs-latency">Cost vs Latency</h3>
+<p>Every policy sits somewhere on a <strong>Pareto frontier</strong> between:</p>
+<ul>
+<li><strong>Cost</strong> — proportional to active replicas (GPUs, pods, or nodes)</li>
+<li><strong>Latency</strong> — overload when arrival rate exceeds capacity, plus queue backlog and dropped work</li>
+</ul>
+<p>Policies that minimize cost alone leave the cluster under-provisioned during spikes. Policies that chase minimum latency over-provision and waste budget.</p>
+<astro-island uid="pyvUE" prefix="r2" component-url="/rl-inference-autoscaler/_astro/ParetoExplorer.CWuOnhmo.js" component-export="default" renderer-url="/rl-inference-autoscaler/_astro/client.CaOyRcmD.js" props="{}" ssr="" client="load" opts="{&quot;name&quot;:&quot;ParetoExplorer&quot;,&quot;value&quot;:true}" await-children=""><p class="text-ink-light text-sm py-8 text-center">Loading…</p><!--astro:end--></astro-island>
+<h3 id="why-simple-baselines-struggle">Why simple baselines struggle</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Baseline</th><th>Behavior</th><th>Failure Mode</th></tr></thead><tbody><tr><td><strong>Do nothing</strong></td><td>Never scales</td><td>Catastrophic overload; worst latency</td></tr><tr><td><strong>Fixed replicas</strong></td><td>Constant capacity</td><td>Can’t follow spikes or troughs</td></tr><tr><td><strong>Target utilization (HPA-style)</strong></td><td>React to utilization</td><td>Lag behind bursts and oscillates</td></tr><tr><td><strong>Greedy</strong></td><td>Scale from next-step demand</td><td>Ignores cold start; poor on replay</td></tr></tbody></table>
+<p>This benchmark on a <strong>200-step GPU-style traffic trace</strong> shows orders-of-magnitude gaps in episode return between RL policies and static baselines along with a surprising gap between <strong>greedy</strong> and <strong>learned</strong> policies once boot delay and queueing matter.</p>
+<div class="rounded-lg border p-4 my-4 not-prose bg-emerald-50 border-emerald-200" role="note" aria-label="Related reading"> <p class="font-semibold mb-2 flex items-center gap-2 text-emerald-900"> <span aria-hidden>💡</span> Related reading </p> <div class="text-ink-muted text-sm [&>*:last-child]:mb-0"> <p>For GPU efficiency, see <a href="https://dcunhrya.github.io/gpu-utilization-blog/"><strong>An Interactive Guide to GPU Utilization</strong></a>. This article focuses on <strong>serving capacity</strong> after models are deployed.</p> </div> </div> </section><section id="03-building-the-simulator.mdx" class="mb-16 scroll-mt-24"> <h2 id="building-the-simulator">Building the Simulator</h2>
+<p>In order to evaluate RL policies, a custom <strong>Gymnasium</strong> environment (<code>AutoscalerEnv</code>) that stands in for a Kubernetes-style inference fleet was needed. Training does not require a live cluster as all rollouts happen in simulation.</p>
+<h3 id="mdp-formulation">MDP formulation</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Component</th><th>Definition</th></tr></thead><tbody><tr><td><strong>State</strong> (S_t)</td><td><code>[λ_t, μ_t, N_t, δ_λ_t]</code> — RPS, utilization, active replicas, RPS delta</td></tr><tr><td><strong>Action</strong> (A_t)</td><td>Discrete <code>{0, 1, 2}</code> → scale down, hold, scale up (<code>{-1, 0, +1}</code>)</td></tr><tr><td><strong>Reward</strong> (R_t)</td><td><code>−(α·N_t + β·(overload + drops + γ·queue_depth))</code></td></tr></tbody></table>
+<ul>
+<li><strong>α</strong> (<code>cost_alpha</code>): penalty per active replica</li>
+<li><strong>β</strong> (<code>latency_beta</code>): penalty for overload and dropped requests</li>
+<li><strong>γ</strong> (<code>queue_penalty_gamma</code>): extra weight on queue backlog</li>
+</ul>
+<p>Maximum throughput per replica is <strong>μ</strong> (<code>throughput_per_replica</code>, default 50 RPS).</p>
+<h3 id="realism-cold-start-and-queue">Realism: cold start and queue</h3>
+<p>Unlike a toy model with instant scale-up:</p>
+<ol>
+<li><strong>Cold start</strong> — <code>+1</code> enqueues a pod boot for <code>cold_start_steps</code> (default 3). Capacity does not increase until ready. Scale-down removes pending boots first, then active replicas (minimum 1).</li>
+<li><strong>Queue</strong> — Arrivals plus backlog are served up to <code>active_replicas × μ</code>. Overflow beyond <code>max_queue</code> is dropped and penalized.</li>
+</ol>
+<p>These dynamics are why a greedy policy with perfect next-step RPS still incurs large latency penalties on high-variance traces.</p>
+<astro-island uid="Z1IHKHF" prefix="r3" component-url="/rl-inference-autoscaler/_astro/RewardTradeoff.D59kXqq7.js" component-export="default" renderer-url="/rl-inference-autoscaler/_astro/client.CaOyRcmD.js" props="{}" ssr="" client="load" opts="{&quot;name&quot;:&quot;RewardTradeoff&quot;,&quot;value&quot;:true}" await-children=""><div class="chart-card not-prose space-y-6"><p class="text-sm text-ink-muted">Adjust reward weights and a toy load scenario. Total reward<!-- --> <span class="text-accent font-mono">R = −(α·N + β·overload + β·γ·queue)</span>.</p><div class="grid sm:grid-cols-2 gap-6"><label class="block text-sm text-ink-muted"><span class="flex justify-between mb-1"><span>α (cost per replica)</span><span class="font-mono text-accent">0.10</span></span><input type="range" min="0.01" max="0.5" step="0.01" class="w-full accent-[#8C1515]" aria-valuemin="0.01" aria-valuemax="0.5" aria-valuenow="0.1" value="0.1"/></label><label class="block text-sm text-ink-muted"><span class="flex justify-between mb-1"><span>β (latency weight)</span><span class="font-mono text-accent">1.00</span></span><input type="range" min="0.1" max="3" step="0.1" class="w-full accent-[#8C1515]" aria-valuemin="0.1" aria-valuemax="3" aria-valuenow="1" value="1"/></label><label class="block text-sm text-ink-muted"><span class="flex justify-between mb-1"><span>γ (queue weight)</span><span class="font-mono text-accent">0.05</span></span><input type="range" min="0" max="0.2" step="0.01" class="w-full accent-[#8C1515]" aria-valuemin="0" aria-valuemax="0.2" aria-valuenow="0.05" value="0.05"/></label><label class="block text-sm text-ink-muted"><span class="flex justify-between mb-1"><span>Active replicas N</span><span class="font-mono text-accent">6</span></span><input type="range" min="1" max="20" step="1" class="w-full accent-[#8C1515]" aria-valuemin="1" aria-valuemax="20" aria-valuenow="6" value="6"/></label><label class="block text-sm text-ink-muted"><span class="flex justify-between mb-1"><span>Request rate λ (RPS)</span><span class="font-mono text-accent">280</span></span><input type="range" min="50" max="500" step="10" class="w-full accent-[#8C1515]" aria-valuemin="50" aria-valuemax="500" aria-valuenow="280" value="280"/></label></div><div class="rounded-lg bg-cream-muted/80 border border-border p-4 text-sm space-y-2"><p class="text-ink-muted">Capacity: <strong class="text-ink">300</strong> <!-- -->RPS · Overload:<!-- --> <strong class="text-ink">0</strong> <!-- -->RPS</p><p class="text-accent font-mono text-lg">Episode-step reward ≈ <!-- -->-2.60</p></div><div class="space-y-3"><div><div class="flex justify-between text-xs text-ink-light mb-1"><span>Cost (α·N)</span><span>0.60</span></div><div class="h-3 rounded-full bg-cream-muted overflow-hidden"><div class="h-full rounded-full transition-all duration-200" style="width:30.000000000000004%;background:#8C1515"></div></div></div><div><div class="flex justify-between text-xs text-ink-light mb-1"><span>Overload (β·max(0, λ−μN))</span><span>0.00</span></div><div class="h-3 rounded-full bg-cream-muted overflow-hidden"><div class="h-full rounded-full transition-all duration-200" style="width:0%;background:#B83A3A"></div></div></div><div><div class="flex justify-between text-xs text-ink-light mb-1"><span>Queue (β·γ·queue)</span><span>2.00</span></div><div class="h-3 rounded-full bg-cream-muted overflow-hidden"><div class="h-full rounded-full transition-all duration-200" style="width:100%;background:#C4A574"></div></div></div></div></div><!--astro:end--></astro-island>
+<h3 id="environment-api">Environment API</h3>
+<div class="code-block-wrapper not-prose my-4 rounded-lg border border-border overflow-hidden bg-cream-card shadow-sm"> <div class="flex items-center justify-between px-4 py-2 border-b border-border bg-cream-muted/60"> <span class="text-xs font-mono text-ink-light">Python</span> <button type="button" class="code-copy-btn text-xs text-accent hover:text-accent-light transition-colors" aria-label="Copy code">
+Copy
+</button> </div> <pre class="p-4 overflow-x-auto text-sm"><code class="font-mono text-ink">from rl_inference_autoscaler import AutoscalerEnv
+
+env = AutoscalerEnv(config={
+  &quot;cold_start_steps&quot;: 3,
+  &quot;traffic_mode&quot;: &quot;auto&quot;,
+  &quot;max_steps_per_episode&quot;: 200,
+})
+obs, info = env.reset(seed=42)
+obs, reward, terminated, truncated, info = env.step(action)  # action in {0, 1, 2}</code></pre> </div>  </section><section id="04-training.mdx" class="mb-16 scroll-mt-24"> <h2 id="policy-training">Policy Training</h2>
+<p>With the environment and data handled, the next step is to train policies with <strong>Ray RLlib</strong> on parallel <code>AutoscalerEnv</code> rollouts.
+<strong>PPO</strong> (on-policy, stable updates) and <strong>DQN</strong> (off-policy, discrete actions) are compared against classical baselines.</p>
+<h3 id="architecture">Architecture</h3>
+<p>If you are interested in reproducing this yourself, this is the workflow I used with <strong>Ray RLlib</strong> and <strong>MLflow</strong>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="text"><code><span class="line"><span>AutoscalerEnv  ◄── parallel env runners (Ray RLlib)</span></span>
+<span class="line"><span>       │</span></span>
+<span class="line"><span>       ▼</span></span>
+<span class="line"><span>  PPO / DQN learner (2×256 MLP actor–critic)</span></span>
+<span class="line"><span>       │</span></span>
+<span class="line"><span>       ├── checkpoints/ppo/final, checkpoints/dqn/final</span></span>
+<span class="line"><span>       └── MLflow (episode_return_mean, policy entropy)</span></span>
+<span class="line"><span></span></span></code></pre>
+<h3 id="local-training">Local training</h3>
+<p>If you want to reproduce from the repo!</p>
+<div class="code-block-wrapper not-prose my-4 rounded-lg border border-border overflow-hidden bg-cream-card shadow-sm"> <div class="flex items-center justify-between px-4 py-2 border-b border-border bg-cream-muted/60"> <span class="text-xs font-mono text-ink-light">Shell</span> <button type="button" class="code-copy-btn text-xs text-accent hover:text-accent-light transition-colors" aria-label="Copy code">
+Copy
+</button> </div> <pre class="p-4 overflow-x-auto text-sm"><code class="font-mono text-ink">uv sync --extra train --no-editable
+uv run --extra train python train.py --local --iterations 50
+uv run --extra train python train_dqn.py --local --iterations 50</code></pre> </div> 
+<p><code>--local</code> runs without separate env-runner processes (useful on a laptop). Checkpoints land under <code>checkpoints/{ppo,dqn}/final/</code>.</p>
+<h3 id="baselines">Baselines</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Policy</th><th>Description</th></tr></thead><tbody><tr><td><code>do_nothing</code></td><td>Always hold (action 1)</td></tr><tr><td><code>fixed_replica</code></td><td>Fixed replica count (default 4)</td></tr><tr><td><code>target_utilization</code></td><td>HPA-style reaction to utilization</td></tr><tr><td><code>greedy</code></td><td>Scale from observed RPS (oracle-style)</td></tr><tr><td><code>ppo</code> / <code>dqn</code></td><td>Trained RLlib checkpoints</td></tr></tbody></table>
+<div class="rounded-lg border p-4 my-4 not-prose bg-cream-card border-border" role="note" aria-label="Modal (optional)"> <p class="font-semibold mb-2 flex items-center gap-2 text-ink"> <span aria-hidden>📝</span> Modal (optional) </p> <div class="text-ink-muted text-sm [&>*:last-child]:mb-0"> <p>The repo includes Modal wrappers for cloud training (<code>modal_train.py</code>). Local CPU training is sufficient for the results shown here, but you may to try out Modal compute (it’s easy to use).</p> </div> </div> </section><section id="05-results.mdx" class="mb-16 scroll-mt-24"> <h2 id="results">Results</h2>
+<p>All policies are evaluated across <strong>50 episodes</strong>. Higher episode return is better (less negative).</p>
+<h3 id="benchmark-summary">Benchmark summary</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Policy</th><th>Return (mean)</th><th>Cost penalty</th><th>Latency penalty</th></tr></thead><tbody><tr><td><strong>PPO</strong></td><td>−692</td><td>299</td><td>393</td></tr><tr><td><strong>DQN</strong></td><td>−902</td><td>263</td><td>639</td></tr><tr><td>Greedy</td><td>−17,566</td><td>98</td><td>17,468</td></tr><tr><td>Target util (HPA)</td><td>−9,519</td><td>171</td><td>9,348</td></tr><tr><td>Fixed (n=4)</td><td>−46,821</td><td>80</td><td>46,741</td></tr><tr><td>Do nothing</td><td>−82,099</td><td>20</td><td>82,079</td></tr></tbody></table>
+<astro-island uid="Z2jWkB0" prefix="r4" component-url="/rl-inference-autoscaler/_astro/PolicyComparisonChart.DMKMIJ_-.js" component-export="default" renderer-url="/rl-inference-autoscaler/_astro/client.CaOyRcmD.js" props="{}" ssr="" client="load" opts="{&quot;name&quot;:&quot;PolicyComparisonChart&quot;,&quot;value&quot;:true}" await-children=""><p class="text-ink-light text-sm py-8 text-center">Loading benchmark data…</p><!--astro:end--></astro-island>
+<p>PPO achieves the <strong>best mean return</strong> among all policies: roughly <strong>25×</strong> better than greedy and <strong>118×</strong> better than do-nothing on this trace.
+DQN is competitive but trades more latency for lower replica cost.</p>
+<figure class="not-prose my-6"> <img src="/rl-inference-autoscaler/figures/benchmark/pareto_frontier.png?v=2" alt="Pareto frontier of cost vs latency penalties" class="rounded-lg border border-border w-full bg-white shadow-sm" loading="lazy"> <figcaption class="text-sm text-ink-light mt-2 text-center">Cost vs latency Pareto frontier across policies</figcaption> </figure>
+<h3 id="training-curves">Training curves</h3>
+<p>Both algorithms converge within ~50 RLlib iterations:</p>
+<figure class="not-prose my-6"> <img src="/rl-inference-autoscaler/figures/training/training_curves_overlay.png" alt="PPO and DQN training curves overlay" class="rounded-lg border border-border w-full bg-white shadow-sm" loading="lazy"> <figcaption class="text-sm text-ink-light mt-2 text-center">Episode return during training</figcaption> </figure> </section><section id="06-analysis.mdx" class="mb-16 scroll-mt-24"> <h2 id="analysis">Analysis</h2>
+<h3 id="why-ppo-beats-greedy-on-return">Why PPO beats greedy on return</h3>
+<p>Greedy minimizes <strong>instantaneous</strong> mismatch between RPS and capacity but does not account for <strong>cold-start delay</strong>: scaling up today does not add throughput for several timesteps. On the CSV replay, greedy accumulates a <strong>large latency penalty</strong> (17,468 mean) despite low replica cost (98).</p>
+<p>PPO and DQN learn to <strong>anticipate</strong> bursts from state features (RPS, utilization, delta) and accept higher replica cost during volatile windows—reducing overload without a perfect oracle.</p>
+<h3 id="ground-truth-gap-oracle-replicas">Ground-truth gap (oracle replicas)</h3>
+<p>Scaling plots compare <strong>active replicas</strong> to an <strong>ideal</strong> count derived from instantaneous RPS (no boot delay). Symmetric |ΔN| alone is misleading: <strong>underprovisioning</strong> (ideal &gt; active) drives SLO risk; <strong>overprovisioning</strong> (active &gt; ideal) mainly adds cost. On episode 0 (seed 42), mean gaps:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Policy</th><th>Under (SLO risk)</th><th>Over (extra cost)</th></tr></thead><tbody><tr><td>Greedy</td><td>1.12</td><td>0.58</td></tr><tr><td>PPO</td><td>0.05</td><td>9.56</td></tr><tr><td>DQN</td><td>0.08</td><td>7.78</td></tr></tbody></table>
+<p>Greedy stays near ideal in replica space yet still loses on <strong>return</strong> because cold-start delay means matching ideal count is not enough to clear overload immediately.</p>
+<astro-island uid="7uwG0" prefix="r5" component-url="/rl-inference-autoscaler/_astro/ScalingTimeline.Bd815gL7.js" component-export="default" renderer-url="/rl-inference-autoscaler/_astro/client.CaOyRcmD.js" props="{}" ssr="" client="load" opts="{&quot;name&quot;:&quot;ScalingTimeline&quot;,&quot;value&quot;:true}" await-children=""><p class="text-ink-light text-sm py-8 text-center">Loading trajectories…</p><!--astro:end--></astro-island>
+<figure class="not-prose my-6"> <img src="/rl-inference-autoscaler/figures/scaling/scaling_vs_ground_truth_combined.png" alt="Active vs ideal replicas for PPO, DQN, and greedy" class="rounded-lg border border-border w-full bg-white shadow-sm" loading="lazy"> <figcaption class="text-sm text-ink-light mt-2 text-center">Traffic (shaded spikes) and active GPU replicas vs ideal policy on one episode (seed 42).</figcaption> </figure>
+<h3 id="why-ppo-overprovisions-but-dqn-tracks-ideal-more-closely">Why PPO overprovisions but DQN tracks ideal more closely</h3>
+<p>On the scaling figure, <strong>PPO</strong> (blue) often sits at <strong>max replicas</strong> after bursts and is slow to scale down (“delayed scale-down”), while <strong>DQN</strong> (purple) follows the black <strong>ideal</strong> line more closely—similar in spirit to <strong>Greedy</strong> (green), but with less underprovisioning at spikes.</p>
+<p>This is not a training failure; the two algorithms learn <strong>different points on the same reward tradeoff</strong>:</p>
+<ol>
+<li>
+<p><strong>PPO minimizes latency first.</strong> With <code>latency_beta</code> much larger than replica cost (<code>cost_alpha</code>), PPO learns that <strong>missing capacity during cold-start</strong> is expensive. It scales up aggressively (122 scale-up vs 47 scale-down actions on this episode) and <strong>holds high replica counts</strong> through quiet periods so it never re-enters overload when traffic returns. That shows up as <strong>mean over ≈ 9.6</strong> and <strong>mean under ≈ 0.05</strong>—almost no SLO risk, lots of extra GPUs.</p>
+</li>
+<li>
+<p><strong>DQN scales down more often.</strong> On the same trace, DQN takes <strong>84 scale-down</strong> steps vs PPO’s 47, so it <strong>releases capacity sooner</strong> when utilization falls. Replica counts stay closer to ideal (<strong>mean over ≈ 7.8</strong>, <strong>mean under ≈ 0.08</strong>), which looks better against ground truth but leaves slightly more headroom for queue buildup (<strong>latency 639</strong> vs PPO’s <strong>393</strong>).</p>
+</li>
+<li>
+<p><strong>On-policy vs off-policy dynamics.</strong> PPO updates from the policy it just ran; once “scale up early, scale down late” works, the clipped objective <strong>reinforces</strong> that safe-but-expensive behavior. DQN’s replay and Q-learning spread credit across many past states, which tends to produce a <strong>less extreme</strong> replica level—closer to greedy in shape, but still with enough proactive scale-up to beat greedy on return.</p>
+</li>
+</ol>
+<p><strong>Takeaway:</strong> PPO wins <strong>episode return</strong> (−692 vs −902) by paying for <strong>reliability</strong> (low underprovisioning). DQN wins <strong>visual fit to ideal</strong> by accepting a bit more SLO risk and less idle capacity. Neither metric alone tells the full story; compare return, latency/cost penalties, and asymmetric under/over gaps together.</p>
+<h3 id="ppo-vs-dqn-returns">PPO vs DQN (returns)</h3>
+<ul>
+<li><strong>PPO</strong> (−692 return): better balance on this trace; higher cost (299) but much lower latency (393).</li>
+<li><strong>DQN</strong> (−902 return): slightly cheaper replicas (263) but more latency (639)—a different point on the cost–latency frontier.</li>
+</ul>
+<p>For deployment, PPO is the stronger default from these benchmarks; DQN remains useful as an off-policy baseline and for ablations (learning rate, replay, etc.).</p>
+<div class="rounded-lg border p-4 my-4 not-prose bg-amber-50 border-amber-200" role="note" aria-label="Simulation ≠ production"> <p class="font-semibold mb-2 flex items-center gap-2 text-amber-900"> <span aria-hidden>⚠️</span> Simulation ≠ production </p> <div class="text-ink-muted text-sm [&>*:last-child]:mb-0"> <p>Results are from a simulator with simplified dynamics. Phase 3 plans Ray Serve deployment and shadow evaluation against live metrics before any production recommendation.</p> </div> </div> </section><section id="07-conclusion.mdx" class="mb-16 scroll-mt-24"> <h2 id="conclusion">Conclusion</h2>
+<p>We set out to learn <strong>scaling policies</strong> for ML inference that balance <strong>replica cost</strong> and <strong>latency</strong> under bursty traffic. The key ingredients were:</p>
+<ol>
+<li>A <strong>realistic simulator</strong> with cold starts, queueing, and trace-driven RPS</li>
+<li>A clear <strong>MDP reward</strong> with tunable α, β, and γ</li>
+<li><strong>Distributed RL training</strong> via Ray RLlib (PPO and DQN)</li>
+<li>Rigorous <strong>benchmarks</strong> against classical baselines</li>
+</ol>
+<p>On a held-out GPU-style trace, <strong>PPO</strong> dramatically outperformed fixed, HPA-style, and greedy policies in episode return—demonstrating that RL can learn temporal structure that myopic heuristics miss.</p>
+<p><strong>Next steps (Phase 3):</strong></p>
+<ul>
+<li>Export trained policies from Ray checkpoints</li>
+<li>Deploy inference behind <strong>Ray Serve</strong> with a FastAPI metrics endpoint</li>
+<li>Shadow-mode comparison against production autoscalers</li>
+</ul>
+<p>Explore the code, reproduce plots, and run training locally:</p>
+<p><strong><a href="https://github.com/dcunhrya/rl-inference-autoscaler">github.com/dcunhrya/rl-inference-autoscaler</a></strong></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> clone</span><span style="color:#9ECBFF"> https://github.com/dcunhrya/rl-inference-autoscaler.git</span></span>
+<span class="line"><span style="color:#79B8FF">cd</span><span style="color:#9ECBFF"> rl-inference-autoscaler</span></span>
+<span class="line"><span style="color:#B392F0">uv</span><span style="color:#9ECBFF"> sync</span><span style="color:#79B8FF"> --extra</span><span style="color:#9ECBFF"> train</span><span style="color:#79B8FF"> --no-editable</span></span>
+<span class="line"><span style="color:#B392F0">.venv/bin/python</span><span style="color:#9ECBFF"> scripts/generate_results_plots.py</span></span>
+<span class="line"><span style="color:#79B8FF">cd</span><span style="color:#9ECBFF"> website</span><span style="color:#E1E4E8"> &amp;&amp; </span><span style="color:#B392F0">npm</span><span style="color:#9ECBFF"> install</span><span style="color:#E1E4E8"> &amp;&amp; </span><span style="color:#B392F0">npm</span><span style="color:#9ECBFF"> run</span><span style="color:#9ECBFF"> dev</span></span>
+<span class="line"></span></code></pre> </section><section id="08-references.mdx" class="mb-16 scroll-mt-24"> <h2 id="references">References</h2>
+<ol>
+<li><strong>Gymnasium</strong> — <a href="https://github.com/Farama-Foundation/Gymnasium">github.com/Farama-Foundation/Gymnasium</a></li>
+<li><strong>Ray RLlib</strong> — <a href="https://docs.ray.io/en/latest/rllib/index.html">docs.ray.io/en/latest/rllib</a></li>
+<li><strong>Proximal Policy Optimization</strong> — Schulman et al., <a href="https://arxiv.org/abs/1707.06347">arXiv:1707.06347</a></li>
+<li><strong>Kubernetes Horizontal Pod Autoscaler</strong> — <a href="https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/">kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale</a></li>
+<li><strong>Ray Serve</strong> — <a href="https://docs.ray.io/en/latest/serve/index.html">docs.ray.io/en/latest/serve</a></li>
+<li><strong>This project</strong> — <a href="https://github.com/dcunhrya/rl-inference-autoscaler">github.com/dcunhrya/rl-inference-autoscaler</a></li>
+</ol> </section> </article> </main> <footer class="border-t border-border py-8 mt-12 bg-cream-muted/30"> <div class="max-w-6xl mx-auto px-4 sm:px-6 text-sm text-ink-light"> <a href="https://github.com/dcunhrya/rl-inference-autoscaler" class="text-accent hover:text-accent-light hover:underline" target="_blank" rel="noopener noreferrer">
+View source on GitHub
+</a> </div> </footer> </div>  </body></html>
