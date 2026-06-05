@@ -2,7 +2,7 @@
 
 **Interactive blog:** [dcunhrya.github.io/rl-inference-autoscaler](https://dcunhrya.github.io/rl-inference-autoscaler/) · Local: `cd website && npm install && npm run dev`
 
-> **Site 404?** The build is on the `gh-pages` branch; you must enable Pages once: **[GITHUB_PAGES_SETUP.md](GITHUB_PAGES_SETUP.md)** → Settings → Pages → branch **`gh-pages`** → **`/ (root)`**.
+> **Site 404 or `Get Pages site failed`?** Enable Pages once: **[GITHUB_PAGES_SETUP.md](GITHUB_PAGES_SETUP.md)** → Settings → Pages → Source **`GitHub Actions`**.
 
 Reinforcement-learning autoscaler for ML inference workloads: a **Gymnasium** cluster simulator (Phase 1), **Ray RLlib PPO** training (Phase 2), and (planned) **Ray Serve** deployment (Phase 3).
 

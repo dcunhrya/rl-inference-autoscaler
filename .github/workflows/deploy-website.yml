@@ -1,5 +1,6 @@
-# Build website/ and publish to the gh-pages branch.
-# YOU MUST enable Pages once in repo Settings (see GITHUB_PAGES_SETUP.md).
+# Deploy website/ via GitHub Actions → Pages artifact (no gh-pages branch).
+# Prerequisite: Settings → Pages → Source = "GitHub Actions"
+# See GITHUB_PAGES_SETUP.md
 
 name: Deploy website to GitHub Pages
 
@@ -14,14 +15,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -43,14 +46,18 @@ jobs:
           npm ci
           npm run build
 
-      - name: Publish to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: website/dist
-          publish_branch: gh-pages
-          force_orphan: true
+          path: website/dist
 
-      - name: Remind — enable Pages in Settings if the site 404s
-        run: |
-          echo "::notice title=GitHub Pages::If https://dcunhrya.github.io/rl-inference-autoscaler/ returns 404, enable Pages: Settings → Pages → Deploy from branch → gh-pages → / (root). See GITHUB_PAGES_SETUP.md"
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

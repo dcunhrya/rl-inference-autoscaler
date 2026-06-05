@@ -1,31 +1,42 @@
-# GitHub Pages setup (required once)
+# GitHub Pages setup
 
-The deploy workflow builds the Astro site and pushes it to the **`gh-pages`** branch automatically.  
-GitHub will **not** serve that branch until you turn on Pages for this repository.
+The deploy workflow uses **GitHub Actions → Pages artifact** (not the `gh-pages` branch).
 
-## Enable the site (2 minutes)
+## Fix: `Get Pages site failed` / `configure-pages` / `HttpError: Not Found`
 
-1. Open **[Settings → Pages](https://github.com/dcunhrya/rl-inference-autoscaler/settings/pages)** for this repo.
-2. Under **Build and deployment**, set **Source** to **Deploy from a branch** (not “GitHub Actions” unless you switch workflows).
-3. Set **Branch** to **`gh-pages`** and folder **`/ (root)`**, then click **Save**.
-4. Wait 1–3 minutes, then open: **https://dcunhrya.github.io/rl-inference-autoscaler/**
+That error means **Pages is not enabled for GitHub Actions** on this repo yet. The workflow does **not** use `actions/configure-pages` (which fails until Pages exists).
 
-You should see a green banner on the Pages settings screen like “Your site is live at …”.
+### One-time setup (required)
 
-## Verify the deploy artifact
+1. Open **[Settings → Pages](https://github.com/dcunhrya/rl-inference-autoscaler/settings/pages)**.
+2. Under **Build and deployment**, set **Source** to **`GitHub Actions`** (not “Deploy from a branch”).
+3. If GitHub shows workflow suggestions, **ignore them** — this repo already has `.github/workflows/deploy-website.yml`.
+4. Go to **Actions → Deploy website to GitHub Pages → Run workflow** (or push to `main`).
 
-The **`gh-pages`** branch should contain `index.html`, `.nojekyll`, and `_astro/` at the root:
+After 1–3 minutes the site should be live at:
 
-https://github.com/dcunhrya/rl-inference-autoscaler/tree/gh-pages
+**https://dcunhrya.github.io/rl-inference-autoscaler/**
 
-If that branch looks correct but the URL still 404s, Pages is not enabled or the wrong branch is selected in Settings.
+### If Source is set to `gh-pages` branch instead
+
+Either:
+
+- Change Source to **GitHub Actions** (matches the current workflow), **or**
+- Use an older workflow that pushes to `gh-pages` via `peaceiris/actions-gh-pages` — the current workflow does **not** do that.
+
+**Do not mix** “Deploy from branch `gh-pages`” with a workflow that uses `configure-pages` / `deploy-pages`.
+
+## How the workflow works
+
+1. **build** — `npm ci && npm run build` in `website/` (with `BASE_PATH=/rl-inference-autoscaler/`)
+2. **upload** — `website/dist` → Pages artifact
+3. **deploy** — `actions/deploy-pages` publishes to the `github-pages` environment
 
 ## Redeploy
 
-- Push changes under `website/` or `results/` to `main`, or  
-- **Actions → Deploy website to GitHub Pages → Run workflow**
+Push changes under `website/` or `results/` to `main`, or run the workflow manually from the Actions tab.
 
-## Local production build
+## Local production check
 
 ```bash
 cd website
