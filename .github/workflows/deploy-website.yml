@@ -1,5 +1,5 @@
-# Build website/ and publish to GitHub Pages (project site).
-# Publishes dist → gh-pages, then enables Pages via the GitHub API if needed.
+# Build website/ and publish to the gh-pages branch.
+# YOU MUST enable Pages once in repo Settings (see GITHUB_PAGES_SETUP.md).
 
 name: Deploy website to GitHub Pages
 
@@ -10,12 +10,11 @@ on:
       - 'website/**'
       - 'results/**'
       - '.github/workflows/deploy-website.yml'
+      - 'GITHUB_PAGES_SETUP.md'
   workflow_dispatch:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -31,7 +30,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: website/package-lock.json
 
@@ -52,38 +51,6 @@ jobs:
           publish_branch: gh-pages
           force_orphan: true
 
-      - name: Enable GitHub Pages (gh-pages / root)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPOSITORY: ${{ github.repository }}
+      - name: Remind — enable Pages in Settings if the site 404s
         run: |
-          set -euo pipefail
-          api() {
-            curl -fsS -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "$@"
-          }
-          body='{"build_type":"legacy","source":{"branch":"gh-pages","path":"/"}}'
-          code=$(curl -s -o /tmp/pages.json -w "%{http_code}" \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${REPOSITORY}/pages")
-          if [ "${code}" = "404" ]; then
-            echo "Pages not enabled yet — creating site..."
-            api -X POST "https://api.github.com/repos/${REPOSITORY}/pages" -d "${body}"
-          elif [ "${code}" = "200" ]; then
-            echo "Pages exists — ensuring source is gh-pages / (root)..."
-            api -X PUT "https://api.github.com/repos/${REPOSITORY}/pages" -d "${body}"
-          else
-            echo "Unexpected GET /pages status: ${code}"
-            cat /tmp/pages.json
-            exit 1
-          fi
-          api "https://api.github.com/repos/${REPOSITORY}/pages" | tee /tmp/pages_status.json
-
-      - name: Pages URL
-        run: |
-          echo "Site should be live at: https://dcunhrya.github.io/rl-inference-autoscaler/"
-          echo "If still 404 after ~2 minutes, open Settings → Pages and confirm source is gh-pages."
+          echo "::notice title=GitHub Pages::If https://dcunhrya.github.io/rl-inference-autoscaler/ returns 404, enable Pages: Settings → Pages → Deploy from branch → gh-pages → / (root). See GITHUB_PAGES_SETUP.md"
