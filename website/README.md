@@ -43,9 +43,10 @@ npm run preview
 
 **Live URL:** [https://dcunhrya.github.io/rl-inference-autoscaler/](https://dcunhrya.github.io/rl-inference-autoscaler/)
 
-1. **One-time (repo admin):** GitHub → **Settings → Pages → Build and deployment → Deploy from a branch** → branch **`gh-pages`** → folder **`/ (root)`**.
-2. Pushes to `main` that touch `website/`, `results/`, or the workflow file run [`.github/workflows/deploy-website.yml`](../.github/workflows/deploy-website.yml), which builds Astro and pushes `website/dist` to `gh-pages`.
+1. The workflow builds Astro, pushes `website/dist` to **`gh-pages`**, and calls the GitHub API to enable Pages on **`gh-pages` / (root)**.
+2. Pushes to `main` that touch `website/`, `results/`, or the workflow file run [`.github/workflows/deploy-website.yml`](../.github/workflows/deploy-website.yml).
 3. Or trigger manually: **Actions → Deploy website to GitHub Pages → Run workflow**.
+4. **If the URL still 404s:** open **Settings → Pages** and confirm **Deploy from a branch → gh-pages → / (root)**. Some org accounts require an admin to allow Pages on the repo first.
 
 The workflow sets `SITE_URL` and `BASE_PATH=/rl-inference-autoscaler/` for Astro. `public/.nojekyll` ensures GitHub Pages serves Astro’s `_astro/` assets (Jekyll would ignore them otherwise).
 

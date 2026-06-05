@@ -1,5 +1,5 @@
-# Build website/ and publish to the gh-pages branch for GitHub Pages.
-# One-time: Repo → Settings → Pages → Deploy from branch → gh-pages / (root).
+# Build website/ and publish to GitHub Pages (project site).
+# Publishes dist → gh-pages, then enables Pages via the GitHub API if needed.
 
 name: Deploy website to GitHub Pages
 
@@ -14,6 +14,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
@@ -42,10 +44,46 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy to gh-pages branch
+      - name: Publish to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: website/dist
           publish_branch: gh-pages
           force_orphan: true
+
+      - name: Enable GitHub Pages (gh-pages / root)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          api() {
+            curl -fsS -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$@"
+          }
+          body='{"build_type":"legacy","source":{"branch":"gh-pages","path":"/"}}'
+          code=$(curl -s -o /tmp/pages.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPOSITORY}/pages")
+          if [ "${code}" = "404" ]; then
+            echo "Pages not enabled yet — creating site..."
+            api -X POST "https://api.github.com/repos/${REPOSITORY}/pages" -d "${body}"
+          elif [ "${code}" = "200" ]; then
+            echo "Pages exists — ensuring source is gh-pages / (root)..."
+            api -X PUT "https://api.github.com/repos/${REPOSITORY}/pages" -d "${body}"
+          else
+            echo "Unexpected GET /pages status: ${code}"
+            cat /tmp/pages.json
+            exit 1
+          fi
+          api "https://api.github.com/repos/${REPOSITORY}/pages" | tee /tmp/pages_status.json
+
+      - name: Pages URL
+        run: |
+          echo "Site should be live at: https://dcunhrya.github.io/rl-inference-autoscaler/"
+          echo "If still 404 after ~2 minutes, open Settings → Pages and confirm source is gh-pages."
