@@ -1,4 +1,4 @@
-# RL Inference Autoscaler — Interactive Blog
+# Learning to Scale GPU Workloads with Reinforcement Learning — Interactive Blog
 
 Long-form interactive article for the [RL inference autoscaler](https://github.com/dcunhrya/rl-inference-autoscaler) project.
 
