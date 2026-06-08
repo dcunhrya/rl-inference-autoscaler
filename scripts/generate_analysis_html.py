@@ -185,7 +185,7 @@ def main() -> None:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RL Inference Autoscaler — Results Analysis</title>
+  <title>Learning to Scale GPU Workloads with Reinforcement Learning — Results Analysis</title>
   <style>
     :root {{
       --bg: #0f1419;
@@ -230,7 +230,7 @@ def main() -> None:
   </style>
 </head>
 <body>
-  <h1>RL Inference Autoscaler — Results</h1>
+  <h1>Learning to Scale GPU Workloads with Reinforcement Learning — Results</h1>
   <p class="meta">Generated {generated} · traffic_mode={html.escape(str(env_cfg.get('traffic_mode', 'auto')))}
   · episodes={benchmark.get('episodes', '—')} · seed={benchmark.get('seed', '—')}</p>
 

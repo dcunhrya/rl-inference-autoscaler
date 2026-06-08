@@ -1,150 +1,58 @@
-# RL Inference Autoscaler
+# Learning to Scale GPU Workloads with Reinforcement Learning
 
-**Interactive blog:** [dcunhrya.github.io/rl-inference-autoscaler](https://dcunhrya.github.io/rl-inference-autoscaler/) · Local: `cd website && npm install && npm run dev`
+**Blog:** [dcunhrya.github.io/rl-inference-autoscaler](https://dcunhrya.github.io/rl-inference-autoscaler/) · Local: `cd website && npm install && npm run dev`
 
-> **Site 404 or `Get Pages site failed`?** Enable Pages once: **[GITHUB_PAGES_SETUP.md](GITHUB_PAGES_SETUP.md)** → Settings → Pages → Source **`GitHub Actions`**.
+RL-based autoscaler for GPU inference: learn when to scale replicas from cluster metrics, balancing cost vs latency in a Gymnasium simulator.
 
-Reinforcement-learning autoscaler for ML inference workloads: a **Gymnasium** cluster simulator (Phase 1), **Ray RLlib PPO** training (Phase 2), and (planned) **Ray Serve** deployment (Phase 3).
+**Project Parts:**
 
-## Project layout
+- MDP simulator (cold starts, queueing, cost–latency reward)
+- Ray RLlib PPO/DQN training, baselines, benchmarks
+- Ray Serve + FastAPI live deployment (future step)
 
-```text
-src/rl_inference_autoscaler/
-  env/                # MDP simulator and reward presets
-    autoscaler.py
-    reward.py
-  data/               # Traffic traces and path helpers (→ repo data/)
-    traffic.py
-    paths.py
-  policies/           # Greedy, fixed-replica, target-utilization baselines
-    baselines.py
-  training/           # Ray RLlib PPO/DQN config and entrypoints
-    config.py
-    runtime.py
-    ppo.py
-    dqn.py
-  evaluation/         # Benchmarks, checkpoint rollout, MLflow
-    benchmark.py
-  cloud/              # Modal app (optional)
-    modal_app.py
-  train_ray.py        # thin shim → training.ppo
-  modal_train.py      # thin shim → cloud.modal_app
-data/                 # bundled traffic_trace.csv (repo root)
-data/
-  traffic_trace.csv   # Optional reproducible RPS trace
-train.py              # Thin CLI for local PPO training
-train_dqn.py          # Thin CLI for local DQN training
-project_info/
-  project_goal.md
-  phase1.md
-  phase2.md
-tests/
-```
+MDP: state `[RPS, util, replicas, rps_delta]` · actions `{down, hold, up}`. Details: [project_info/project_goal.md](project_info/project_goal.md) · Phase walkthroughs: [phase1](project_info/phase1.md) · [phase2](project_info/phase2.md).
 
 ## Quick start
 
 ```bash
-# Core simulator
 uv sync
-uv run pytest tests/test_autoscaler_env.py -v
-uv run python main.py
-
-# Training (use --no-editable on macOS — editable .pth files are skipped as "hidden")
-uv sync --extra train --no-editable
-uv sync --extra train --extra modal --extra dev --no-editable   # full stack
-
 uv run pytest -v
+
+uv sync --extra train --no-editable   # macOS: --no-editable required
 .venv/bin/python train.py --dry-run
+.venv/bin/python train.py --local --iterations 50
+.venv/bin/python train_dqn.py --local --iterations 50
 ```
 
-## Phase 1 — Environment
+Checkpoints: `checkpoints/ppo/final/`, `checkpoints/dqn/final/`. Modal: `uv run modal run src/rl_inference_autoscaler/modal_train.py --no-dry-run`.
 
-- **State:** `[RPS, utilization, active_replicas, rps_delta]`
-- **Actions:** `0` scale down, `1` hold, `2` scale up
-- **Dynamics:** cold-start delay on scale-up, queue buildup, overload penalties
+## Reproducibility
 
-**Traffic data** (no external download required for training):
-
-| Mode | Source |
-|------|--------|
-| `synthetic` | Random walk + noise + 5% spikes |
-| `csv` / `auto` | `data/traffic_trace.csv` if present, else synthetic |
-
-Replace the CSV with exported production RPS for realistic replay. Details: [project_info/phase1.md](project_info/phase1.md).
-
-## Phase 2 — Training
-
-### Local Ray (RLlib PPO)
-
-```bash
-uv sync --extra train
-# Must pass --extra train with uv run so Ray workers see ray/rllib
-uv run --extra train python train.py --iterations 50 --num-env-runners 4
-# Mac-friendly debug mode (no separate env-runner processes):
-uv run --extra train python train.py --local --iterations 10
-uv run --extra train python train.py --mlflow-tracking-uri file:./mlruns
-```
-
-If you see `ModuleNotFoundError: No module named 'rl_inference_autoscaler'`, run `uv sync --extra train --no-editable` (macOS skips hidden `__editable__*.pth` files) or use `train.py` / `main.py` from the repo root (they add `src/` to the path).
-
-If you see `ModuleNotFoundError: No module named 'ray'` in `(raylet)` logs, Ray packaged the project without train deps — use `--extra train` or `.venv/bin/python train.py` after `uv sync --extra train --no-editable`.
-
-Checkpoints: `checkpoints/ppo/final/` (legacy fallback: `checkpoints/final/`)
-
-### Local Ray (RLlib DQN)
-
-```bash
-uv run --extra train python train_dqn.py --dry-run
-uv run --extra train python train_dqn.py --iterations 50 --num-env-runners 4
-uv run --extra train python train_dqn.py --local --iterations 10
-uv run --extra train python train_dqn.py --mlflow-tracking-uri sqlite:///mlflow.db
-```
-
-Checkpoints: `checkpoints/dqn/final/`
-
-### Modal (when you choose to run)
-
-Modal code is **only** in `modal_train.py`. Default CLI is a dry-run:
-
-```bash
-uv sync --extra train --extra modal
-modal setup
-uv run modal run src/rl_inference_autoscaler/modal_train.py
-# actual job:
-uv run modal run src/rl_inference_autoscaler/modal_train.py --no-dry-run --iterations 100
-# DQN on Modal:
-uv run modal run src/rl_inference_autoscaler/modal_train.py --no-dry-run --algorithm dqn --iterations 100
-```
-
-Full walkthrough: [project_info/phase2.md](project_info/phase2.md).
-
-## Phase 3 — Not yet implemented
-
-- Export policy from Ray checkpoint
-- Ray Serve + FastAPI endpoint for live metrics → scaling action
-
-See [project_info/project_goal.md](project_info/project_goal.md).
-
-## Results plots
+Checkpoints are gitignored; everything else is in-repo. Python `>=3.12`, [uv](https://docs.astral.sh/uv/), pinned deps in `pyproject.toml`. Eval defaults: 50 episodes, `seed=42`, `data/traffic_trace.csv`.
 
 ```bash
 uv sync --extra train --no-editable
-.venv/bin/python scripts/generate_results_plots.py
+.venv/bin/python train.py --local --iterations 100 --mlflow-tracking-uri sqlite:///mlflow.db
+.venv/bin/python train_dqn.py --local --iterations 100 --mlflow-tracking-uri sqlite:///mlflow.db
+.venv/bin/python scripts/run_eval.py
+.venv/bin/python scripts/generate_results_plots.py --episodes 50 --faceted
+# or: .venv/bin/python scripts/complete_backlog.py
 ```
 
-Outputs under `results/figures/{benchmark,training,scaling,baselines}/` plus `results/benchmark_summary.json`. See `results/figures/README.md`.
+Outputs: `results/figures/`, `results/benchmark_summary.json`, `results/analysis.html`. Best settings: [project_info/best_run.md](project_info/best_run.md).
 
-## Development
+## Phase 3 — Deployment (future)
 
-```bash
-uv run pytest -v
-uv run python -m rl_inference_autoscaler.train_ray --dry-run
+1. Export PPO from `checkpoints/ppo/final` (`Algorithm.from_checkpoint` → `get_module()`)
+2. `@serve.deployment` + FastAPI: metrics in → scale action out
+3. Validate on replayed traces before shadow/A/B rollout
+
+```
+Prometheus/K8s metrics → FastAPI + Ray Serve → scale action → autoscaler
 ```
 
-**Note:** `gymnasium` and `pandas` are pinned for Ray RLlib / MLflow compatibility (`gymnasium>=1.2.2,<1.3`, `pandas>=2.2,<3`). Raise these when upstream supports newer releases.
+Backlog: [experiments_backlog.md](project_info/experiments_backlog.md) §6.
 
-## Follow-ups you may want
+## Layout
 
-- **W&B** instead of MLflow — add `wandb` to `[project.optional-dependencies.train]` and log in `train_ray._log_result`
-- **Stronger traces** — replace `data/traffic_trace.csv` with cluster exports
-- **Phase 3** — Serve deployment and policy eval script
+`src/rl_inference_autoscaler/{env,policies,training,evaluation,cloud}` · `data/traffic_trace.csv` · `train.py` / `train_dqn.py` · `scripts/`

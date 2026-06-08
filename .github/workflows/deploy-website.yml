@@ -1,7 +1,3 @@
-# Deploy website/ via GitHub Actions → Pages artifact (no gh-pages branch).
-# Prerequisite: Settings → Pages → Source = "GitHub Actions"
-# See GITHUB_PAGES_SETUP.md
-
 name: Deploy website to GitHub Pages
 
 on:
@@ -45,6 +41,8 @@ jobs:
         run: |
           npm ci
           npm run build
+          ls -la dist
+          test -f dist/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -54,9 +52,15 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

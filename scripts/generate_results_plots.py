@@ -20,6 +20,7 @@ if str(_REPO / "src") not in sys.path:
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import MaxNLocator
 
 from rl_inference_autoscaler.evaluation import run_benchmark_suite
 
@@ -124,10 +125,19 @@ def _pareto_nondominated(points: list[tuple[float, float]]) -> list[tuple[float,
     return frontier
 
 
+# Bottom-left of text box sits at point + offset → label reads above-right of dot.
+_PARETO_ANNOTATE_OFFSET = (10, 8)
+
+
 def _plot_pareto_frontier(benchmark: dict) -> None:
     policies = benchmark["policies"]
     fixed_n = benchmark.get("fixed_replicas", 4)
-    labels = {**POLICY_LABELS, "fixed_replica": f"Fixed replica (n={fixed_n})"}
+    labels = {
+        **POLICY_LABELS,
+        "ppo": "PPO",
+        "dqn": "DQN",
+        "fixed_replica": f"Fixed replica (n={fixed_n})",
+    }
 
     fig, ax = plt.subplots(figsize=(8, 6))
     points: list[tuple[float, float]] = []
@@ -138,7 +148,6 @@ def _plot_pareto_frontier(benchmark: dict) -> None:
             continue
         cost = data["mean_cost_penalty"]
         latency = data["mean_latency_penalty"]
-        ret = data["episode_return_mean"]
         points.append((cost, latency))
         ax.scatter(
             cost,
@@ -151,10 +160,12 @@ def _plot_pareto_frontier(benchmark: dict) -> None:
             label=labels[key],
         )
         ax.annotate(
-            f"{labels[key]}\nreturn={ret:.0f}",
+            labels[key],
             (cost, latency),
             textcoords="offset points",
-            xytext=(8, 6),
+            xytext=_PARETO_ANNOTATE_OFFSET,
+            ha="left",
+            va="bottom",
             fontsize=8,
             color="#333",
         )
@@ -170,11 +181,12 @@ def _plot_pareto_frontier(benchmark: dict) -> None:
     ax.set_title("Cost–latency tradeoff (Pareto view)")
     ax.text(
         0.02,
-        0.98,
+        0.02,
         "Lower-left is better.\nReturn = -(cost + latency) per episode.",
         transform=ax.transAxes,
         fontsize=8,
-        va="top",
+        va="bottom",
+        ha="left",
         color="#444",
     )
     ax.legend(loc="upper right", fontsize=8)
@@ -237,8 +249,82 @@ def _plot_scaling_vs_ground_truth(
     print(f"Wrote {out}")
 
 
+def _style_scaling_axes(ax, *, show_xlabel: bool = False) -> None:
+    ax.grid(True, color="#e2e8f0", linewidth=0.7, alpha=0.9)
+    ax.set_axisbelow(True)
+    ax.tick_params(axis="both", labelsize=11, colors="#475569")
+    ax.yaxis.label.set_size(12)
+    ax.yaxis.label.set_color("#1e293b")
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+    if show_xlabel:
+        ax.set_xlabel("Timestep", fontsize=12, color="#1e293b")
+    else:
+        ax.tick_params(labelbottom=False)
+
+
+def _traffic_spike_intervals(
+    rps: np.ndarray, *, percentile: float = 72.0
+) -> list[tuple[int, int]]:
+    """Contiguous timestep ranges where traffic is in the upper tail."""
+    threshold = float(np.percentile(rps, percentile))
+    high = rps >= threshold
+    intervals: list[tuple[int, int]] = []
+    start: int | None = None
+    for i, flag in enumerate(high):
+        if flag and start is None:
+            start = i
+        elif not flag and start is not None:
+            intervals.append((start, i))
+            start = None
+    if start is not None:
+        intervals.append((start, len(rps)))
+    return intervals
+
+
+def _annotate_scaling_story(
+    ax_traffic,
+    ax_replicas,
+    steps: np.ndarray,
+    rps: np.ndarray,
+    ideal: np.ndarray,
+    trajectories: dict[str, dict],
+) -> None:
+    """At most two annotations that explain the reliability vs cost tradeoff."""
+    arrow = dict(arrowstyle="->", color="#64748b", lw=0.85, shrinkA=3, shrinkB=3)
+
+    spike_t = int(np.argmax(rps))
+    if rps[spike_t] > np.percentile(rps, 70):
+        ax_traffic.annotate(
+            "Traffic spike",
+            xy=(spike_t, rps[spike_t]),
+            xytext=(min(spike_t + 16, len(steps) - 1), rps[spike_t] * 0.88),
+            fontsize=9,
+            color="#6d28d9",
+            arrowprops=arrow,
+        )
+
+    ppo_traj = trajectories.get("ppo")
+    if ppo_traj is None:
+        return
+    active = np.array(ppo_traj["active_replicas"])
+    ideal_falling = np.concatenate([[False], np.diff(ideal) < -0.5])
+    delayed = (ideal < 4) & (active > ideal + 6) & ideal_falling
+    if not np.any(delayed):
+        return
+    t0 = int(np.where(delayed)[0][-1])
+    ax_replicas.annotate(
+        "Delayed scale-down",
+        xy=(t0, active[t0]),
+        xytext=(max(t0 - 24, 0), active[t0] + 1.2),
+        fontsize=9,
+        color="#475569",
+        arrowprops=arrow,
+    )
+
+
 def _plot_combined_scaling_vs_ground_truth(benchmark: dict) -> None:
-    """Overlay PPO, DQN, Greedy, and ground truth on one episode."""
+    """Two-panel blog figure: traffic context and replicas vs ideal."""
     policies = benchmark["policies"]
     trajectories: dict[str, dict] = {}
     for key in SCALING_COMPARE_POLICIES:
@@ -254,86 +340,130 @@ def _plot_combined_scaling_vs_ground_truth(benchmark: dict) -> None:
     ideal = np.array(trajectories[ref_key]["ideal_replicas"])
     rps = np.array(trajectories[ref_key]["rps"])
     steps = np.arange(len(ideal))
-    episode_seed = benchmark["seed"] + benchmark.get("trajectory_episode", 0)
 
-    fig, axes = plt.subplots(
-        2,
-        1,
-        figsize=(12, 8),
-        sharex=True,
-        gridspec_kw={"height_ratios": [2.2, 1], "hspace": 0.08},
-    )
-    ax_replicas, ax_rps = axes
+    legend_labels = {"ppo": "PPO", "dqn": "DQN", "greedy": "Greedy"}
+    replica_colors = {k: POLICY_COLORS[k] for k in SCALING_COMPARE_POLICIES}
 
-    gt_style = SCALING_LINE_STYLES["ground_truth"]
-    ax_replicas.step(
-        steps,
-        ideal,
-        where="post",
-        label="Ground truth (ideal replicas)",
-        zorder=5,
-        **gt_style,
-    )
+    plot_rc = {
+        "font.family": "sans-serif",
+        "font.sans-serif": ["DejaVu Sans", "Arial", "Helvetica"],
+        "font.size": 11,
+    }
 
-    for key in SCALING_COMPARE_POLICIES:
-        traj = trajectories.get(key)
-        if not traj:
-            continue
-        active = np.array(traj["active_replicas"])
-        style = SCALING_LINE_STYLES[key]
+    with plt.rc_context(plot_rc):
+        fig = plt.figure(figsize=(12, 8.5), facecolor="white")
+        gs = fig.add_gridspec(
+            2,
+            1,
+            height_ratios=[0.55, 3.2],
+            hspace=0.14,
+        )
+        ax_traffic = fig.add_subplot(gs[0])
+        ax_replicas = fig.add_subplot(gs[1], sharex=ax_traffic)
+
+        fig.suptitle(
+            "RL Autoscaling: Reliability vs Cost vs Ideal",
+            fontsize=17,
+            fontweight="bold",
+            color="#0f172a",
+            x=0.09,
+            ha="left",
+            y=0.97,
+        )
+
+        # (1) Traffic context with spike shading
+        for start, end in _traffic_spike_intervals(rps):
+            ax_traffic.axvspan(
+                start,
+                end,
+                color="#ede9fe",
+                alpha=0.55,
+                zorder=0,
+                linewidth=0,
+            )
+        ax_traffic.plot(steps, rps, color="#a78bfa", linewidth=0.85, alpha=0.85, zorder=2)
+        ax_traffic.set_ylabel("Traffic (RPS)", fontsize=12)
+        _style_scaling_axes(ax_traffic)
+
+        spike_intervals = _traffic_spike_intervals(rps)
+
+        # (2) Replica trajectories
+        for start, end in spike_intervals:
+            ax_replicas.axvspan(
+                start,
+                end,
+                color="#ede9fe",
+                alpha=0.35,
+                zorder=0,
+                linewidth=0,
+            )
         ax_replicas.step(
-            steps[: len(active)],
-            active,
+            steps,
+            ideal,
             where="post",
-            label=POLICY_LABELS[key],
-            zorder=4 if key == "greedy" else 3,
-            **style,
+            label="Ideal policy",
+            color="#111827",
+            linewidth=3.4,
+            zorder=6,
+        )
+        for key in SCALING_COMPARE_POLICIES:
+            traj = trajectories.get(key)
+            if not traj:
+                continue
+            active = np.array(traj["active_replicas"])
+            ax_replicas.step(
+                steps[: len(active)],
+                active,
+                where="post",
+                label=legend_labels[key],
+                color=replica_colors[key],
+                linewidth=1.75,
+                alpha=0.9,
+                zorder=5 if key == "greedy" else 4,
+            )
+
+        ax_replicas.set_ylabel("Active GPU replicas", fontsize=12, fontweight="medium")
+        replica_max = max(
+            float(ideal.max()),
+            *(
+                float(np.max(traj["active_replicas"]))
+                for traj in trajectories.values()
+            ),
+        )
+        ax_replicas.set_ylim(0, int(np.ceil(replica_max)) + 1)
+        ax_replicas.yaxis.set_major_locator(MaxNLocator(integer=True))
+        _style_scaling_axes(ax_replicas, show_xlabel=True)
+
+        handles, labels = ax_replicas.get_legend_handles_labels()
+        fig.legend(
+            handles,
+            labels,
+            loc="upper center",
+            bbox_to_anchor=(0.5, 0.905),
+            ncol=4,
+            fontsize=11,
+            frameon=False,
+            handlelength=2.4,
+            columnspacing=1.8,
         )
 
-    ax_replicas.set_ylabel("Replica count")
-    ax_replicas.set_title(
-        f"Scaling vs ground truth — PPO, DQN & Greedy (episode seed={episode_seed})"
-    )
-    ax_replicas.set_ylim(bottom=0.5)
-    ax_replicas.grid(True, alpha=0.25)
-    ax_replicas.legend(loc="upper left", ncol=2, fontsize=9, framealpha=0.92)
-
-    ax_err = ax_replicas.twinx()
-    for key in SCALING_COMPARE_POLICIES:
-        traj = trajectories.get(key)
-        if not traj:
-            continue
-        active = np.array(traj["active_replicas"])
-        err = np.abs(active - ideal[: len(active)])
-        ax_err.fill_between(
-            steps[: len(active)],
-            err,
-            step="post",
-            color=POLICY_COLORS[key],
-            alpha=0.08,
-            linewidth=0,
+        _annotate_scaling_story(
+            ax_traffic, ax_replicas, steps, rps, ideal, trajectories
         )
-    ax_err.set_ylabel("|active − ideal|", fontsize=9, color="#64748b")
-    ax_err.tick_params(axis="y", labelsize=8, colors="#64748b")
-    ax_err.set_ylim(bottom=0)
 
-    ax_rps.plot(steps, rps, color="#7c3aed", linewidth=1.3, alpha=0.9)
-    ax_rps.set_ylabel("RPS")
-    ax_rps.set_xlabel("Timestep")
-    ax_rps.set_title("Traffic (λ_t)")
-    ax_rps.grid(True, alpha=0.25)
+        fig.text(
+            0.09,
+            0.02,
+            "Ideal replicas use instantaneous RPS (no cold-start).",
+            fontsize=9,
+            color="#64748b",
+            ha="left",
+        )
 
-    fig.text(
-        0.01,
-        0.01,
-        "Same episode for all policies. Shaded bands (right axis): absolute replica gap vs ground truth.",
-        fontsize=8,
-        color="#555",
-    )
-    fig.subplots_adjust(left=0.08, right=0.92, top=0.94, bottom=0.08, hspace=0.12)
-    out = FIG_SCALING / "scaling_vs_ground_truth_combined.png"
-    fig.savefig(out, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+        fig.subplots_adjust(left=0.09, right=0.97, top=0.86, bottom=0.08, hspace=0.16)
+        out = FIG_SCALING / "scaling_vs_ground_truth_combined.png"
+        fig.savefig(out, dpi=220, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
     print(f"Wrote {out}")
 
 

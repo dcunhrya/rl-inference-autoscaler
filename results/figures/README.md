@@ -28,7 +28,7 @@ Replica count vs ground-truth ideal capacity (one episode).
 
 | File | Backlog |
 |------|---------|
-| `scaling_vs_ground_truth_combined.png` | P1 — PPO, DQN, greedy overlay |
+| `scaling_vs_ground_truth_combined.png` | P1 — traffic, replicas vs ideal, tracking error (3-panel) |
 | `ppo_scaling_vs_ground_truth.png` | P1 |
 | `dqn_scaling_vs_ground_truth.png` | P1 |
 | `scaling_vs_ground_truth_faceted.png` | P4 — faceted view |
