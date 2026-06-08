@@ -13,13 +13,20 @@ import BlogHeader from '../../components/BlogHeader.astro';
 
 ## Introduction
 
-Serving large language models and other ML workloads at scale means paying for **GPU replicas** that must track **unpredictable traffic**. Kubernetes Horizontal Pod Autoscaler (HPA) reacts to average CPU or custom metrics with fixed rules. That works for steady load, but inference spikes (batch jobs, product launches, diurnal patterns) often arrive faster than cold-start delays allow.
+Serving large language models and other GPU-backed ML workloads at scale is a tradeoff. 
+On one side, we need enough GPU replicas to absorb **unpredictable traffic spikes**. 
+On the other, every extra **idle replica is expensive**.
 
-When replicas lag behind demand, requests can queue, latency can spikes, and SLOs can break. When you over-provision, GPUs sit idle and cloud bills climb (which nowdays costs a fortune). The trade-off is inherently **multi-objective**: minimize cost **and** minimize latency under uncertainty.
+Most production systems rely on **rule-based autoscaling**. 
+Kubernetes Horizontal Pod Autoscaler scales replicas based on signals like average CPU utilization. 
+These heuristics are simple and reliable, but they are **reactive**. 
+They work when load changes gradually, but batch jobs and sudden request bursts can all push demand up faster than new GPU workers can **cold start**.
+If replicas lag behind demand, requests queue, latency rises, and service-level objectives can break. 
 
-We investigate the following question: can a **reinforcement learning** policy learn to scale inference replicas proactively from cluster metrics, outperforming classical heuristics in a realistic simulator?
-
-We built a **Gymnasium** environment that models request rate, utilization, replica count, cold starts, and queueing, trained **PPO** and **DQN** policies with **Ray RLlib**, and benchmarked them against baselines on a GPU-style synthetic traffic trace.
+Rather than hand-designing a fixed scaling rule, we ask whether an RL policy can **learn when to scale GPU replicas**.
+In this post, we build a **Gymnasium** environment that simulates request rate, GPU utilization, replica count, cold starts, and queueing behavior. 
+We train **PPO** and **DQN** autoscaling policies with **Ray RLlib** and compare them against baselines. 
+The goal is to understand when learned scaling policies can **trade off latency and cost** better than fixed rules.
 
 <Callout type="note" title="Who this is for">
   ML engineers and researchers interested in **RL for systems**, **Ray**, or **autoscaler design**. Basic familiarity with MDPs and RL helps for understaing algorithms!

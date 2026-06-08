@@ -11,22 +11,22 @@ In order to evaluate RL policies, a custom **Gymnasium** environment (`Autoscale
 
 | Component | Definition |
 |-----------|------------|
-| **State** \(S_t\) | `[λ_t, μ_t, N_t, δ_λ_t]` — RPS, utilization, active replicas, RPS delta |
-| **Action** \(A_t\) | Discrete `{0, 1, 2}` → scale down, hold, scale up (`{-1, 0, +1}`) |
-| **Reward** \(R_t\) | `−(α·N_t + β·(overload + drops + γ·queue_depth))` |
+| **State** $S_t$ | $[\lambda_t, \mu_t, N_t, \delta_{\lambda_t}]$ — RPS, utilization, active replicas, RPS delta |
+| **Action** $A_t$ | Discrete $\{0, 1, 2\}$ → scale down, hold, scale up ($\{-1, 0, +1\}$) |
+| **Reward** $R_t$ | $-(\alpha N_t + \beta(\text{overload} + \text{drops} + \gamma \cdot \text{queue\_depth}))$ |
 
-- **α** (`cost_alpha`): penalty per active replica  
-- **β** (`latency_beta`): penalty for overload and dropped requests  
-- **γ** (`queue_penalty_gamma`): extra weight on queue backlog  
+- **$\alpha$** (`cost_alpha`): penalty per active replica  
+- **$\beta$** (`latency_beta`): penalty for overload and dropped requests  
+- **$\gamma$** (`queue_penalty_gamma`): extra weight on queue backlog  
 
-Maximum throughput per replica is **μ** (`throughput_per_replica`, default 50 RPS).
+Maximum throughput per replica is **$\mu$** (`throughput_per_replica`, default 50 RPS).
 
 ### Realism: cold start and queue
 
 Unlike a toy model with instant scale-up:
 
 1. **Cold start** — `+1` enqueues a pod boot for `cold_start_steps` (default 3). Capacity does not increase until ready. Scale-down removes pending boots first, then active replicas (minimum 1).
-2. **Queue** — Arrivals plus backlog are served up to `active_replicas × μ`. Overflow beyond `max_queue` is dropped and penalized.
+2. **Queue** — Arrivals plus backlog are served up to $\text{active\_replicas} \times \mu$. Overflow beyond `max_queue` is dropped and penalized.
 
 These dynamics are why a greedy policy with perfect next-step RPS still incurs large latency penalties on high-variance traces.
 
@@ -45,4 +45,3 @@ env = AutoscalerEnv(config={
 obs, info = env.reset(seed=42)
 obs, reward, terminated, truncated, info = env.step(action)  # action in {0, 1, 2}`}
 </CodeBlock>
-
