@@ -29,6 +29,11 @@ Policies that minimize cost alone leave the cluster under-provisioned during spi
 
 This benchmark on a **200-step GPU-style traffic trace** shows orders-of-magnitude gaps in episode return between RL policies and static baselines along with a surprising gap between **greedy** and **learned** policies once boot delay and queueing matter.
 
+The evaluation trace is synthetic but designed to mimic GPU inference serving behavior: periods of moderate load, sudden request bursts, and quiet intervals where excess replicas become expensive. 
+This makes it useful for testing cold-start-aware autoscaling.
+
+The important failure mode is that the right replica count at time $t$ may still be too late if new replicas take several steps to become available.
+
 <Callout type="tip" title="Related reading">
   For GPU efficiency, see [**An Interactive Guide to GPU Utilization**](https://dcunhrya.github.io/gpu-utilization-blog/). This article focuses on **serving capacity** after models are deployed.
 </Callout>

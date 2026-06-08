@@ -27,7 +27,7 @@ Mean gaps from results:
 | DQN | 0.08 | 7.78 |
 
 Greedy stays near ideal in replica space yet still loses on **return** because cold-start delay means matching ideal count is not enough to clear overload immediately.
-Check on RPS and replicas from PPO, DQN, and Greedy in the plot below.
+Compare RPS and replicas from PPO, DQN, and Greedy in the plot below.
 
 <ScalingTimeline />
 
@@ -53,9 +53,11 @@ DQN’s replay and Q-learning spread credit across many past states, which tends
 DQN wins **visual fit to ideal** by accepting a bit more SLO risk and less idle capacity. 
 Neither metric is good enough to justify deploying one algorithm. Compare return, latency/cost penalties, and asymmetric under/over gaps together.
 
-### Best Algorithm for Deployment (For Now)
+### Best Policy in This Simulator
 
-For deployment, based on current results, PPO is the stronger default from these benchmarks. DQN remains useful as an off-policy baseline and for ablations (learning rate, replay, etc.).
+In this simulator benchmark, **PPO** is the strongest policy. 
+It pays more replica cost than DQN, but it avoids under-provisioning during traffic spikes (lower latency penalty).
+
 
 <Callout type="warning" title="Simulation ≠ production">
   Results are from a simulator with simplified dynamics. 
