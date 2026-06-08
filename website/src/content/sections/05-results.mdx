@@ -3,8 +3,6 @@ title: Results
 order: 5
 ---
 
-import Figure from '../../components/Figure.astro';
-
 ## Results
 
 All policies are evaluated across **50 episodes**. Higher episode return is better (less negative).
@@ -26,19 +24,8 @@ PPO achieves the **best mean return** among all policies: roughly **25×** bette
 DQN is competitive but trades more latency for lower replica cost.
 
 
-<Figure
-  src="figures/benchmark/pareto_frontier.png"
-  version="2"
-  alt="Pareto frontier of cost vs latency penalties"
-  caption="Cost vs latency Pareto frontier across policies"
-/>
-
 ### Training curves
 
 Both algorithms converge within ~50 RLlib iterations:
 
-<Figure
-  src="figures/training/training_curves_overlay.png"
-  alt="PPO and DQN training curves overlay"
-  caption="Episode return during training"
-/>
+<TrainingCurvesChart />

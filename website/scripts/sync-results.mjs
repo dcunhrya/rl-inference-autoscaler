@@ -55,6 +55,45 @@ async function syncBenchmarkSummary() {
   console.log('  copied results/benchmark_summary.json');
 }
 
+async function syncTrainingCurves() {
+  const fullPath = join(repoRoot, 'results/benchmark_full.json');
+  let raw;
+  try {
+    raw = await readFile(fullPath, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      console.warn('  skip training curves (missing benchmark_full.json)');
+      return;
+    }
+    throw err;
+  }
+
+  const full = JSON.parse(raw);
+  const ppoMetrics = full.mlflow?.ppo?.metrics?.episode_return_mean ?? [];
+  const dqnMetrics = full.mlflow?.dqn?.metrics?.episode_return_mean ?? [];
+
+  if (ppoMetrics.length === 0 && dqnMetrics.length === 0) {
+    console.warn('  skip training curves (no MLflow episode_return_mean in benchmark_full.json)');
+    return;
+  }
+
+  const out = {
+    ppo: {
+      run_id: full.mlflow?.ppo?.run_id ?? null,
+      episode_return_mean: ppoMetrics,
+    },
+    dqn: {
+      run_id: full.mlflow?.dqn?.run_id ?? null,
+      episode_return_mean: dqnMetrics,
+    },
+  };
+
+  const dest = join(publicDir, 'data/training_curves.json');
+  await ensureDir(dirname(dest));
+  await writeFile(dest, JSON.stringify(out, null, 2));
+  console.log('  wrote public/data/training_curves.json');
+}
+
 async function syncTrajectories() {
   const fullPath = join(repoRoot, 'results/benchmark_full.json');
   let raw;
@@ -92,6 +131,7 @@ async function main() {
   console.log('Syncing results into website/public/...');
   await syncBenchmarkSummary();
   await syncTrajectories();
+  await syncTrainingCurves();
   for (const [src, dest] of FIGURE_COPIES) {
     await copyIfExists(src, dest);
   }

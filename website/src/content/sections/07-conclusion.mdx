@@ -5,16 +5,16 @@ order: 7
 
 ## Conclusion
 
-We set out to learn **scaling policies** for ML inference that balance **replica cost** and **latency** under bursty traffic. The key ingredients were:
+We set out to learn **scaling policies** for ML inference that balance **replica cost** and **latency** under traffic. The key ingredients were:
 
 1. A **realistic simulator** with cold starts, queueing, and trace-driven RPS  
 2. A clear **MDP reward** with tunable α, β, and γ  
 3. **Distributed RL training** via Ray RLlib (PPO and DQN)  
-4. Rigorous **benchmarks** against classical baselines  
+4. **Benchmarks** against classical baselines  
 
-On a held-out GPU-style trace, **PPO** dramatically outperformed fixed, HPA-style, and greedy policies in episode return—demonstrating that RL can learn temporal structure that myopic heuristics miss.
+On a held-out GPU-style trace, **PPO** dramatically outperformed fixed, HPA-style, and greedy policies in episode return, demonstrating that RL can learn temporal structure that heuristics miss.
 
-**Next steps (Phase 3):**
+**Next steps:**
 
 - Export trained policies from Ray checkpoints  
 - Deploy inference behind **Ray Serve** with a FastAPI metrics endpoint  
@@ -24,10 +24,10 @@ Explore the code, reproduce plots, and run training locally:
 
 **[github.com/dcunhrya/rl-inference-autoscaler](https://github.com/dcunhrya/rl-inference-autoscaler)**
 
-```bash
-git clone https://github.com/dcunhrya/rl-inference-autoscaler.git
+<CodeBlock lang="bash" title="Quick start">
+{`git clone https://github.com/dcunhrya/rl-inference-autoscaler.git
 cd rl-inference-autoscaler
 uv sync --extra train --no-editable
 .venv/bin/python scripts/generate_results_plots.py
-cd website && npm install && npm run dev
-```
+cd website && npm install && npm run dev`}
+</CodeBlock>

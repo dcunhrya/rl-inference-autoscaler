@@ -17,9 +17,9 @@ Serving large language models and other ML workloads at scale means paying for *
 
 When replicas lag behind demand, requests can queue, latency can spikes, and SLOs can break. When you over-provision, GPUs sit idle and cloud bills climb (which nowdays costs a fortune). The trade-off is inherently **multi-objective**: minimize cost **and** minimize latency under uncertainty.
 
-My investigation focuses on the following question: can a **reinforcement learning** policy learn to scale inference replicas proactively from cluster metrics, outperforming classical heuristics in a realistic simulator?
+We investigate the following question: can a **reinforcement learning** policy learn to scale inference replicas proactively from cluster metrics, outperforming classical heuristics in a realistic simulator?
 
-I built a **Gymnasium** environment that models request rate, utilization, replica count, cold starts, and queueing; trained **PPO** and **DQN** policies with **Ray RLlib**; and benchmarked them against baselines on a GPU-style synthetic traffic trace.
+We built a **Gymnasium** environment that models request rate, utilization, replica count, cold starts, and queueing, trained **PPO** and **DQN** policies with **Ray RLlib**, and benchmarked them against baselines on a GPU-style synthetic traffic trace.
 
 <Callout type="note" title="Who this is for">
   ML engineers and researchers interested in **RL for systems**, **Ray**, or **autoscaler design**. Basic familiarity with MDPs and RL helps for understaing algorithms!

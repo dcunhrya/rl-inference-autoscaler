@@ -25,6 +25,15 @@
     @apply prose-th:text-ink prose-td:text-ink-muted;
   }
 
+  .prose-blog pre code {
+    @apply bg-transparent text-ink px-0 py-0 rounded-none;
+  }
+
+  .prose-blog pre code::before,
+  .prose-blog pre code::after {
+    content: none;
+  }
+
   .chart-card {
     @apply rounded-xl border border-border bg-cream-card p-4 my-6 shadow-sm;
   }

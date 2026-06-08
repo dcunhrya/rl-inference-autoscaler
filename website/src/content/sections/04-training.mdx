@@ -12,15 +12,15 @@ With the environment and data handled, the next step is to train policies with *
 
 If you are interested in reproducing this yourself, this is the workflow I used with **Ray RLlib** and **MLflow**:
 
-```text
-AutoscalerEnv  ◄── parallel env runners (Ray RLlib)
+<CodeBlock lang="text" title="Training pipeline">
+{`AutoscalerEnv  ◄── parallel env runners (Ray RLlib)
        │
        ▼
   PPO / DQN learner (2×256 MLP actor–critic)
        │
        ├── checkpoints/ppo/final, checkpoints/dqn/final
-       └── MLflow (episode_return_mean, policy entropy)
-```
+       └── MLflow (episode_return_mean, policy entropy)`}
+</CodeBlock>
 
 ### Local training
 

@@ -8,6 +8,7 @@ import PolicyComparisonChart from '../components/PolicyComparisonChart.astro';
 import ParetoExplorer from '../components/ParetoExplorer.astro';
 import ScalingTimeline from '../components/ScalingTimeline.astro';
 import RewardTradeoff from '../components/RewardTradeoff.astro';
+import TrainingCurvesChart from '../components/TrainingCurvesChart.astro';
 import Figure from '../components/Figure.astro';
 
 const rawSections = await getCollection('sections');
@@ -30,6 +31,7 @@ const mdxComponents = {
   ParetoExplorer,
   ScalingTimeline,
   RewardTradeoff,
+  TrainingCurvesChart,
   BlogHeader,
   Figure,
 };
